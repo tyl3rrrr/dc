@@ -628,3 +628,7 @@ After updating files, set `FEEDBACK_CHANNEL_ID` in `.env`, run `npm run deploy`,
 - Added public `/hostinfo` for all members. It reports OS/platform/architecture, Node.js version, sampled CPU usage, memory usage, CPU model/core count, host uptime and measurement time.
 - CPU utilization is sampled over 500 ms. On container hosting, OS memory and CPU values may reflect the host rather than container-specific quotas.
 - Deploy updated slash commands with `npm run deploy`, then restart the bot.
+
+
+## Dashboard v8.2
+Siehe `DASHBOARD-V8.2.md` für die neuen Konfigurationseditoren, das erforderliche Supabase-Backend-Update und den Funktionsstatus.

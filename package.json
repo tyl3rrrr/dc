@@ -1,7 +1,7 @@
 {
   "name": "tylxrrrr-discord-bot",
-  "version": "8.1.0",
-  "description": "GalaxyBot v8.1: moderation, utility, giveaways with private winner details, dashboard health commands, anonymous feedback relay and existing community features.",
+  "version": "8.2.0",
+  "description": "GalaxyBot v8.2: moderation, utility, giveaways with private winner details, dashboard health commands, anonymous feedback relay and existing community features.",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
