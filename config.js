@@ -36,7 +36,7 @@ function getBotOwnerIds() {
 const TWITCH_DEFAULT_NAME = process.env.TWITCH_NAME || '0tylxrrrr';
 
 const links = {
-  website: process.env.WEBSITE_URL || 'https://tylxrrrr.is-great.net',
+  website: process.env.WEBSITE_URL || 'https://galaxybot.is-great.org/',
   tos: process.env.TOS_URL || 'https://tylxrrrr.is-great.net/tos-bot.html',
   privacy: process.env.PRIVACY_URL || 'https://tylxrrrr.is-great.net/privacy-bot.html',
 };

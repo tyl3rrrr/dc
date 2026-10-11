@@ -23,6 +23,7 @@ const presence = require('./presence');
 const github = require('./github');
 const dashboardBridge = require('./dashboard-bridge');
 const giveawayRuntime = require('./giveaway-runtime');
+const feedbackRuntime = require('./feedback-runtime');
 const reportRuntime = require('./report-runtime');
 const partnerRuntime = require('./partner-runtime');
 const rulesRuntime = require('./rules-runtime');
@@ -147,6 +148,7 @@ const INTENT_PLANS = [
 // custom-ID prefix -> handler. A NEW button/menu/form only needs one line here.
 const COMPONENT_ROUTES = [
   { prefix: giveawayRuntime.JOIN_PREFIX, handle: giveawayRuntime.handleButton },
+  { prefix: feedbackRuntime.PREFIX, handle: (i) => feedbackRuntime.handleModal(i) },
   { prefix: reportRuntime.PREFIX, handle: reportRuntime.handleButton },
   { prefix: partnerRuntime.PREFIX, handle: partnerRuntime.handleButton },
   { prefix: rulesRuntime.PREFIX, handle: (i) => (i.isModalSubmit() ? rulesRuntime.handleModal(i) : rulesRuntime.handleButton(i)) },

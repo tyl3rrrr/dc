@@ -1,10 +1,10 @@
-# tylxrrrr Discord Bot (v7.9.1)
+# tylxrrrr Discord Bot (v8.0.0)
 
 The bot source itself uses a flat Node.js structure built on discord.js v14. The optional `dashboard/` folder contains the static InfinityFree dashboard, Supabase Edge Function, SQL schema, and setup guide.
 
 ---
 
-## v7.9.1 — Supabase dashboard bridge
+## v8.0.0 — Supabase dashboard bridge
 
 Added a Supabase-backed dashboard for InfinityFree. Supabase handles Discord login and securely relays setting changes; the bot uses outbound HTTPS polling only. See `dashboard/README-DASHBOARD.md` for setup.
 
@@ -612,3 +612,19 @@ pm2 start index.js --name tylxrrrr-bot --max-memory-restart 1536M
 **Not possible in this environment:** an actual login to Discord (no
 network access here) - please run `npm run deploy` and `npm start` once on
 your end and let me know if anything still comes up.
+
+
+## GalaxyBot v8 preview additions
+- `/dashboard` and `/dashboard-status` (moderator/admin/server owner access).
+- `/feedback` anonymous modal; set `FEEDBACK_CHANNEL_ID` to a staff-only text channel. The sender ID mapping is stored privately in `feedback-private.json` so `/feedback-reply` can send a DM without showing the sender identity to staff. Protect and back up this file appropriately.
+- `/feedback-reply reference message` lets moderators reply privately to a feedback reference. A successful DM consumes the reference mapping.
+- `/giveaway create` now requires `item` and `description`; public giveaway embeds show only the item name, while winner DMs include the description.
+
+After updating files, set `FEEDBACK_CHANNEL_ID` in `.env`, run `npm run deploy`, and fully restart the bot process.
+
+
+## v8.1.0 — public host information
+
+- Added public `/hostinfo` for all members. It reports OS/platform/architecture, Node.js version, sampled CPU usage, memory usage, CPU model/core count, host uptime and measurement time.
+- CPU utilization is sampled over 500 ms. On container hosting, OS memory and CPU values may reflect the host rather than container-specific quotas.
+- Deploy updated slash commands with `npm run deploy`, then restart the bot.

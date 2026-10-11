@@ -29,9 +29,11 @@ const { report } = require('./commands-report');
 const { rules } = require('./commands-rules');
 const { partner } = require('./commands-partner');
 const { tos, privacyPolicy, stats } = require('./commands-info');
+const { hostinfo } = require('./commands-hostinfo');
 const { applyConfig, applyPanel } = require('./commands-apply');
 const { config } = require('./commands-config');
 const { githubCheck } = require('./commands-github');
+const dashboardCommands = require('./commands-dashboard');
 
 const help = menus.buildHelpCommand();
 
@@ -41,7 +43,12 @@ const registry = [
   [core.status, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [menus.changelog, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [core.botinfo, { category: 'bot', access: 'everyone', scope: 'anywhere' }],
+  [hostinfo, { category: 'bot', access: 'everyone', scope: 'anywhere' }],
   [stats, { category: 'bot', access: 'everyone', scope: 'anywhere' }],
+  [dashboardCommands.dashboard, { category: 'admin', access: 'mod', scope: 'guild' }],
+  [dashboardCommands.dashboardStatus, { category: 'admin', access: 'mod', scope: 'guild' }],
+  [dashboardCommands.feedbackCommand, { category: 'utility', access: 'everyone', scope: 'guild' }],
+  [dashboardCommands.feedbackReply, { category: 'utility', access: 'mod', scope: 'guild' }],
   [admReload, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
   [consoleCmd, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
   [ask, { category: 'ai', access: 'everyone', scope: 'anywhere' }],

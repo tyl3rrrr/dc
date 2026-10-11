@@ -26,7 +26,8 @@ const giveaway = {
       s
         .setName('create')
         .setDescription('Starts a giveaway')
-        .addStringOption((o) => o.setName('prize').setDescription('What can be won?').setMaxLength(200).setRequired(true))
+        .addStringOption((o) => o.setName('item').setDescription('Public name of the prize, e.g. Admin role').setMaxLength(200).setRequired(true))
+        .addStringOption((o) => o.setName('description').setDescription('Details sent privately to each winner by DM').setMaxLength(1000).setRequired(true))
         .addStringOption((o) => o.setName('duration').setDescription('How long it runs, e.g. 30m, 2h, 1d, 1d12h (1 minute to 60 days)').setRequired(true))
         .addIntegerOption((o) => o.setName('winners').setDescription('How many winners (default 1)').setMinValue(1).setMaxValue(25).setRequired(false))
         .addChannelOption((o) => o.setName('channel').setDescription('Where to post it (default: this channel)').addChannelTypes(...TEXT_CHANNELS).setRequired(false))
@@ -118,10 +119,12 @@ const giveaway = {
 
 async function create(interaction) {
   const guild = interaction.guild;
-  const prize = interaction.options.getString('prize').trim();
+  const prize = interaction.options.getString('item').trim();
+  const description = interaction.options.getString('description').trim();
   const durationMs = runtime.parseDuration(interaction.options.getString('duration'));
 
-  if (!prize) return void (await interaction.editReply('❌ Please enter a prize.'));
+  if (!prize) return void (await interaction.editReply('❌ Please enter the item name.'));
+  if (!description) return void (await interaction.editReply('❌ Please enter the prize description; it is sent to winners by DM.'));
   if (!durationMs) return void (await interaction.editReply('❌ I could not read that duration. Examples: `30m`, `2h`, `1d`, `1d12h`, `1w`.'));
   if (durationMs < runtime.MIN_DURATION_MS || durationMs > runtime.MAX_DURATION_MS) {
     return void (await interaction.editReply('❌ The duration must be between **1 minute** and **60 days**.'));
@@ -144,6 +147,7 @@ async function create(interaction) {
 
   const { giveaway: g, message } = await runtime.create(guild, channel, {
     prize,
+    description,
     durationMs,
     winnersCount: interaction.options.getInteger('winners') || 1,
     hostId: interaction.user.id,
