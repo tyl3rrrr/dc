@@ -161,7 +161,6 @@ async function create(guild, channel, opts) {
     channelId: channel.id,
     messageId: null,
     prize: opts.prize,
-    description: opts.description || '',
     winnersCount: opts.winnersCount,
     hostId: opts.hostId,
     createdAt: Date.now(),
@@ -240,25 +239,6 @@ async function announce(channel, g, content, winners) {
   await channel.send(payload).catch((err) => console.warn(`Giveaway ${g.id}: could not announce in the channel:`, errText(err)));
 }
 
-
-async function notifyWinners(client, guildId, g, winners, isReroll = false) {
-  if (!winners || !winners.length) return;
-  const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
-  const host = g.hostId ? await client.users.fetch(g.hostId).catch(() => null) : null;
-  for (const userId of winners) {
-    const user = await client.users.fetch(userId).catch(() => null);
-    if (!user) {
-      if (host) await host.send(`⚠️ I couldn't DM a winner for giveaway **${truncate(g.prize, 100)}** (ID: ${g.id}); the user's account could not be fetched.`).catch(() => {});
-      continue;
-    }
-    const body = `🎉 Congratulations! You${isReroll ? ' were selected in a giveaway reroll' : ' won a giveaway'} on **${guild ? guild.name : 'a Discord server'}**.\n\n**Prize:** ${truncate(g.prize, 200)}\n\n**Details:**\n${truncate(g.description || 'The host has not provided additional details.', 1500)}\n\nGiveaway ID: \`${g.id}\``;
-    try { await user.send(body); }
-    catch (err) {
-      if (host) await host.send(`⚠️ I couldn't deliver the prize details by DM to <@${userId}> for **${truncate(g.prize, 100)}** (giveaway ID: ${g.id}). Their DMs may be closed.`).catch(() => {});
-    }
-  }
-}
-
 // Ends a running giveaway NOW and draws the winners. Returns the updated record or null.
 async function endGiveaway(client, guildId, id) {
   const g = storage.getGiveaway(guildId, id);
@@ -283,7 +263,6 @@ async function endGiveaway(client, guildId, id) {
   const done = storage.updateGiveaway(guildId, id, { winners, drawn: [...winners] });
 
   if (message) await message.edit(buildMessage(done)).catch((err) => console.warn(`Giveaway ${id}: could not update the message:`, errText(err)));
-  await notifyWinners(client, guildId, done, winners, false);
   await announce(
     channel,
     done,
@@ -308,7 +287,6 @@ async function rerollGiveaway(client, guildId, id, count) {
 
   const done = storage.updateGiveaway(guildId, id, { drawn: [...(g.drawn || []), ...winners], rerolled: [...(g.rerolled || []), ...winners] });
   if (message) await message.edit(buildMessage(done)).catch(() => {});
-  await notifyWinners(client, guildId, done, winners, true);
   await announce(channel, done, `🔁 New winner${winners.length === 1 ? '' : 's'}: ${mentions(winners)}! Congratulations - you won **${truncate(done.prize, 200)}**!`, winners);
   return { ok: true, winners };
 }

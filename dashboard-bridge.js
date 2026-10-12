@@ -6,9 +6,6 @@ const SETTINGS = {
   logChannelId: 'channel', suggestChannelId: 'channel', ticketChannelId: 'channel',
   githubChannelId: 'channel', macrumorsChannelId: 'channel', reportChannelId: 'channel',
   adminRoleId: 'role', modRoleId: 'role', ticketStaffRoleId: 'role',
-  // Structured per-server settings edited by the dashboard. Values are JSON.
-  welcome: 'json', applyTypes: 'json', ticketConfig: 'json', goodbye: 'json',
-  loggingConfig: 'json', suggestionsConfig: 'json', autoRoleConfig: 'json', moderationConfig: 'json', giveawayConfig: 'json',
 };
 const TEXT_CHANNEL_TYPES = new Set([ChannelType.GuildText, ChannelType.GuildAnnouncement]);
 let started = false;
@@ -53,7 +50,7 @@ function guildSnapshot(guild) {
     .sort((a, b) => b.position - a.position);
   const current = storage.getGuildSettings(guild.id);
   const settings = {};
-  for (const key of Object.keys(SETTINGS)) settings[key] = SETTINGS[key] === 'json' ? (current[key] ?? null) : (current[key] || '');
+  for (const key of Object.keys(SETTINGS)) settings[key] = current[key] || '';
   return { id: guild.id, name: guild.name, owner_id: guild.ownerId, member_count: guild.memberCount || 0,
     channels, roles, settings, updated_at: new Date().toISOString() };
 }
@@ -72,18 +69,7 @@ async function applyJob(client, job) {
   if (!(await verifyAdmin(guild, job.user_id))) return { status: 'error', message: 'Discord hat die Administratorberechtigung nicht bestätigt.' };
   const kind = SETTINGS[job.setting_key];
   if (!kind) return { status: 'error', message: 'Diese Einstellung ist nicht für das Dashboard freigegeben.' };
-  let value = String(job.value ?? '').trim();
-  if (kind === 'json') {
-    if (!value) { storage.removeGuildSetting(guild.id, job.setting_key); return { status: 'success', message: 'Konfiguration zurückgesetzt.' }; }
-    if (value.length > 12000) return { status: 'error', message: 'Die Konfiguration ist zu groß (max. 12 KB).' };
-    let parsed; try { parsed = JSON.parse(value); } catch { return { status: 'error', message: 'Ungültige JSON-Konfiguration.' }; }
-    const expected = { welcome: 'object', applyTypes: 'array', ticketConfig: 'object', goodbye: 'object', loggingConfig: 'object', suggestionsConfig: 'object', autoRoleConfig: 'object', moderationConfig: 'object', giveawayConfig: 'object' }[job.setting_key];
-    if ((expected === 'array' && !Array.isArray(parsed)) || (expected === 'object' && (!parsed || Array.isArray(parsed) || typeof parsed !== 'object'))) return { status: 'error', message: 'Ungültiges Format für diese Einstellung.' };
-    if (job.setting_key === 'applyTypes' && (parsed.length > 20 || parsed.some(x => !x || typeof x.label !== 'string' || x.label.length > 80 || !Array.isArray(x.questions) || x.questions.length > 10 || x.questions.some(q => typeof q !== 'string' || q.length > 200)))) return { status: 'error', message: 'Bewerbungstypen oder Fragen sind ungültig.' };
-    if (job.setting_key === 'welcome' && Object.values(parsed).some(v => typeof v === 'string' && v.length > 1500)) return { status: 'error', message: 'Welcome-Texte dürfen maximal 1500 Zeichen lang sein.' };
-    storage.setGuildSetting(guild.id, job.setting_key, parsed);
-    return { status: 'success', message: 'Konfiguration wurde gespeichert.' };
-  }
+  const value = String(job.value || '').trim();
   if (value) {
     if (!/^[0-9]{15,22}$/.test(value)) return { status: 'error', message: 'Ungültige Discord-ID.' };
     if (kind === 'channel') {

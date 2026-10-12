@@ -5,7 +5,7 @@
 // Access is checked centrally in permissions.js: administrators for everything, moderators AND
 // administrators for `/config macrumors`, and the BOT OWNER ONLY for `/config bot-logs` (see commands.js).
 
-const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
 const storage = require('./storage');
 const macrumors = require('./macrumors');
 const github = require('./github');
@@ -102,30 +102,48 @@ const config = {
       const type = interaction.options.getString('type') || 'all';
       const userOpt = interaction.options.getUser('user');
       const search = interaction.options.getString('search') || '';
-      const count = interaction.options.getInteger('count') || 10;
-
-      const { total, entries } = await botlog.query({ type, userId: userOpt ? userOpt.id : null, search, limit: count });
-      if (entries.length === 0) {
+      const { total, entries } = await botlog.query({ type, userId: userOpt ? userOpt.id : null, search, limit: 20000 });
+      if (!entries.length) {
         const { total: grand, byType } = await botlog.counts();
-        await interaction.editReply(
-          grand
-            ? `No matching log entries. In total there are **${grand}** entries: ${Object.entries(byType).map(([t, n]) => `${TYPE_LABEL[t] || t} ${n}`).join(', ')}.`
-            : 'The bot log is empty so far.'
-        );
+        await interaction.editReply(grand ? `No matching log entries. In total there are **${grand}** entries: ${Object.entries(byType).map(([t, n]) => `${TYPE_LABEL[t] || t} ${n}`).join(', ')}.` : 'The bot log is empty so far.');
         return;
       }
-      const lines = entries.map((e) => {
-        const who = e.userTag ? `${e.userTag} (\`${e.userId}\`)` : e.userId ? `\`${e.userId}\`` : 'unknown';
-        const where = e.guildName ? ` · ${truncate(e.guildName, 40)}` : e.type === 'dm' || e.type === 'ai' ? ' · DM' : '';
-        const files = e.attachments && e.attachments.length ? `\n📎 ${e.attachments.map((a) => a.name).join(', ')}` : '';
-        return `**${TYPE_LABEL[e.type] || e.type}** <t:${Math.floor(e.t / 1000)}:R> - ${who}${where}\n${truncate(e.text || '(no text)', 300)}${files}`;
+      const pageSize = 8;
+      let page = 0;
+      const render = () => {
+        const current = entries.slice(page * pageSize, (page + 1) * pageSize);
+        const lines = current.map((e) => {
+          const who = e.userTag ? `${e.userTag} (${e.userId || 'no ID'})` : e.userId || 'unknown';
+          const where = e.guildName ? ` · ${truncate(e.guildName, 60)} (${e.guildId || '?'})` : e.type === 'dm' || e.type === 'ai' ? ' · DM' : '';
+          const files = e.attachments && e.attachments.length ? `\n📎 ${e.attachments.map((a) => a.name).join(', ')}` : '';
+          const date = new Date(e.t).toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+          return `**${TYPE_LABEL[e.type] || e.type}** · ${date}\n${who}${where}\n${truncate(e.text || '(no text)', 700)}${files}`;
+        });
+        const embed = new EmbedBuilder().setTitle('📋 Bot activity log — all matching entries')
+          .setColor(0x5865f2).setDescription(truncate(lines.join('\n\n'), 3900))
+          .setFooter({ text: `Page ${page + 1}/${Math.max(1, Math.ceil(entries.length / pageSize))} · ${entries.length} of ${total} entries · retention ${botlog.retentionDays()} days` });
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('botlog_prev').setLabel('◀ Previous').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
+          new ButtonBuilder().setCustomId('botlog_next').setLabel('Next ▶').setStyle(ButtonStyle.Secondary).setDisabled((page + 1) * pageSize >= entries.length),
+          new ButtonBuilder().setCustomId('botlog_txt').setLabel('Download all as .txt').setStyle(ButtonStyle.Primary)
+        );
+        return { embeds: [embed], components: [row] };
+      };
+      await interaction.editReply(render());
+      const reply = await interaction.fetchReply();
+      const collector = reply.createMessageComponentCollector({ time: 15 * 60 * 1000, filter: i => i.user.id === interaction.user.id });
+      collector.on('collect', async i => {
+        if (i.customId === 'botlog_prev') page = Math.max(0, page - 1);
+        if (i.customId === 'botlog_next') page = Math.min(Math.ceil(entries.length / pageSize) - 1, page + 1);
+        if (i.customId === 'botlog_txt') {
+          const text = entries.map(e => [new Date(e.t).toISOString(), `type=${e.type}`, `user=${e.userTag || ''} (${e.userId || ''})`, `guild=${e.guildName || ''} (${e.guildId || ''})`, `channel=${e.channelId || ''}`, e.text || '', ...(e.attachments || []).map(a => `attachment=${a.name} ${a.url || ''}`), '-'.repeat(72)].join('\n')).join('\n');
+          const file = new AttachmentBuilder(Buffer.from(text || 'No log entries', 'utf8'), { name: `galaxybot-logs-${new Date().toISOString().slice(0,10)}.txt` });
+          await i.reply({ content: `Export: ${entries.length} matching entries. Handle the file as confidential; it may contain private messages sent to the bot.`, files: [file], flags: EPHEMERAL });
+          return;
+        }
+        await i.update(render());
       });
-      const embed = new EmbedBuilder()
-        .setTitle('📋 Bot activity log')
-        .setColor(0x5865f2)
-        .setDescription(truncate(lines.join('\n\n'), 4000))
-        .setFooter({ text: `Showing ${entries.length} of ${total} matching entries · kept ${botlog.retentionDays()} days` });
-      await interaction.editReply({ embeds: [embed] });
+      collector.on('end', () => interaction.editReply({ components: [] }).catch(() => {}));
       return;
     }
 

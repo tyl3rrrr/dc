@@ -80,7 +80,7 @@ async function readAll() {
 }
 
 // Newest first. Returns { total, entries } (entries limited to `limit`).
-async function query({ type = 'all', userId = null, search = '', limit = 10 } = {}) {
+async function query({ type = 'all', userId = null, search = '', limit = 10, offset = 0 } = {}) {
   const all = await readAll();
   const needle = String(search || '').toLowerCase();
   const matches = [];
@@ -91,7 +91,7 @@ async function query({ type = 'all', userId = null, search = '', limit = 10 } = 
     if (needle && !`${e.text} ${e.userTag || ''} ${e.guildName || ''}`.toLowerCase().includes(needle)) continue;
     matches.push(e);
   }
-  return { total: matches.length, entries: matches.slice(0, limit) };
+  return { total: matches.length, entries: matches.slice(Math.max(0, offset), Math.max(0, offset) + limit) };
 }
 
 async function counts() {

@@ -18,7 +18,7 @@ const utility = require('./commands-utility');
 const { settings } = require('./commands-settings');
 const { ticket, ticketClose } = require('./commands-tickets');
 const { admReload, consoleCmd } = require('./commands-admin');
-const { ask, code } = require('./commands-ai');
+const { ask, code, aiMemory } = require('./commands-ai');
 const menus = require('./menus');
 const { automodWords } = require('./commands-automod-words');
 const { automodCmd } = require('./commands-automod');
@@ -29,11 +29,10 @@ const { report } = require('./commands-report');
 const { rules } = require('./commands-rules');
 const { partner } = require('./commands-partner');
 const { tos, privacyPolicy, stats } = require('./commands-info');
-const { hostinfo } = require('./commands-hostinfo');
 const { applyConfig, applyPanel } = require('./commands-apply');
 const { config } = require('./commands-config');
 const { githubCheck } = require('./commands-github');
-const dashboardCommands = require('./commands-dashboard');
+const { ownerInspect } = require('./commands-owner-tools');
 
 const help = menus.buildHelpCommand();
 
@@ -43,15 +42,12 @@ const registry = [
   [core.status, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [menus.changelog, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [core.botinfo, { category: 'bot', access: 'everyone', scope: 'anywhere' }],
-  [hostinfo, { category: 'bot', access: 'everyone', scope: 'anywhere' }],
   [stats, { category: 'bot', access: 'everyone', scope: 'anywhere' }],
-  [dashboardCommands.dashboard, { category: 'admin', access: 'mod', scope: 'guild' }],
-  [dashboardCommands.dashboardStatus, { category: 'admin', access: 'mod', scope: 'guild' }],
-  [dashboardCommands.feedbackCommand, { category: 'utility', access: 'everyone', scope: 'guild' }],
-  [dashboardCommands.feedbackReply, { category: 'utility', access: 'mod', scope: 'guild' }],
   [admReload, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
   [consoleCmd, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
+  [ownerInspect, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
   [ask, { category: 'ai', access: 'everyone', scope: 'anywhere' }],
+  [aiMemory, { category: 'ai', access: 'everyone', scope: 'anywhere' }],
   [code, { category: 'ai', access: 'everyone', scope: 'anywhere' }],
   [tos, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [privacyPolicy, { category: 'general', access: 'everyone', scope: 'anywhere' }],

@@ -38,6 +38,8 @@ const ask = {
       userName: interaction.user.globalName || interaction.user.username,
       text: question,
       place: interaction.guildId ? 'guild' : 'dm',
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       botName: interaction.client.user && interaction.client.user.username,
       isOwner: permissions.isBotOwner(interaction.user.id),
     });
@@ -59,6 +61,38 @@ const ask = {
   },
 };
 
+
+
+const aiMemory = {
+  data: new SlashCommandBuilder().setName('ai').setDescription('AI memory controls')
+    .addSubcommand(s => s.setName('remember').setDescription('Save a persistent note for the AI')
+      .addStringOption(o => o.setName('info').setDescription('What the AI should remember').setMaxLength(1000).setRequired(true))
+      .addStringOption(o => o.setName('scope').setDescription('Where to remember it').setRequired(true).addChoices(
+        { name: 'Only my DMs with the bot', value: 'dm' },
+        { name: 'Only me in this server', value: 'server-user' },
+        { name: 'Everyone in this text channel', value: 'channel' }
+      )))
+    .addSubcommand(s => s.setName('memories').setDescription('List your saved AI notes in this scope')
+      .addStringOption(o => o.setName('scope').setDescription('Which notes').setRequired(true).addChoices({name:'DM',value:'dm'},{name:'Me in this server',value:'server-user'},{name:'This channel',value:'channel'})))
+    .addSubcommand(s => s.setName('forget').setDescription('Delete saved AI notes in this scope')
+      .addStringOption(o => o.setName('scope').setDescription('Which notes').setRequired(true).addChoices({name:'DM',value:'dm'},{name:'Me in this server',value:'server-user'},{name:'This channel',value:'channel'}))),
+  async execute(interaction) {
+    const sub = interaction.options.getSubcommand();
+    const mode = interaction.options.getString('scope');
+    if (mode !== 'dm' && !interaction.guildId) return void await interaction.reply({content:'❌ Server/channel memory can only be used inside a server.', flags:EPHEMERAL});
+    const args = { mode, userId: interaction.user.id, guildId: interaction.guildId, channelId: interaction.channelId };
+    if (sub === 'remember') {
+      const ok = ai.saveMemory(args, interaction.options.getString('info'));
+      return void await interaction.reply({content: ok ? `✅ Saved. Scope: **${mode === 'dm' ? 'your DMs' : mode === 'channel' ? 'this channel for everyone' : 'you in this server'}**. Use \`/ai forget\` to remove these notes later.` : '❌ The note was empty.', flags:EPHEMERAL});
+    }
+    if (sub === 'memories') {
+      const items = ai.listMemories(args);
+      return void await interaction.reply({content: items.length ? items.map(x => `**${x.index}.** ${x.text}`).join('\n').slice(0,1900) : 'No saved notes in this scope.', flags:EPHEMERAL});
+    }
+    const n = ai.clearMemories(args);
+    await interaction.reply({content:`🧹 Deleted ${n} saved note(s) in this scope.`, flags:EPHEMERAL});
+  }
+};
 
 const CODE_LANGUAGES = {
   html: 'html',
@@ -172,4 +206,4 @@ const code = {
   },
 };
 
-module.exports = { ask, code };
+module.exports = { ask, code, aiMemory };
