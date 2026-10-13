@@ -55,8 +55,6 @@ async function respond(message, { scope, place, prompt }) {
     userName: user.globalName || user.username,
     text: prompt,
     place,
-    guildId: message.guild ? message.guild.id : null,
-    channelId: message.channelId || (message.channel && message.channel.id),
     botName: message.client.user && message.client.user.username,
     isOwner: permissions.isBotOwner(user.id),
   });

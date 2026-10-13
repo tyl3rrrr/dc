@@ -32,7 +32,7 @@ const FALLBACK_UPLOAD_LIMIT = 10 * 1024 * 1024;
 
 const TEXT = {
   prompt: 'What do you need help with? Type /ticket-close to close this ticket',
-  done: 'We informed our Staff! Help is in the Way!',
+  done: 'Problem submitted to our Staff! The support team will look at your ticket soon.',
   cancelled: 'Cancelled Ticket',
 };
 
@@ -167,6 +167,7 @@ async function deliver(client, guildId, user, payload) {
   }
 
   const roleId = settings.ticketStaffRoleId && guild.roles.cache.has(settings.ticketStaffRoleId) ? settings.ticketStaffRoleId : null;
+  const archiveChannel = settings.ticketArchiveChannelId && guild.channels.cache.get(settings.ticketArchiveChannelId);
   try {
     await channel.send({
       content: roleId ? `<@&${roleId}>` : undefined,
@@ -174,6 +175,11 @@ async function deliver(client, guildId, user, payload) {
       files: files.map((f) => f.builder),
       allowedMentions: roleId ? { roles: [roleId] } : { parse: [] },
     });
+    if (archiveChannel && archiveChannel.isTextBased() && archiveChannel.id !== channel.id) {
+      const archiveEmbed = EmbedBuilder.from(embed).setFooter({ text: `Archived ticket #${number} • Status: submitted` });
+      try { await archiveChannel.send({ embeds: [archiveEmbed], allowedMentions: { parse: [] } }); }
+      catch (archiveErr) { console.warn(`Ticket #${number} reached inbox but archive failed:`, errText(archiveErr)); }
+    }
   } catch (err) {
     console.warn(`Tickets: could not post to ${guildId}:`, errText(err));
     logging.logError(client, guildId, err, `Ticket #${number} from ${user.tag || user.id} could not be posted to the ticket channel`);

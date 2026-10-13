@@ -23,6 +23,7 @@ const presence = require('./presence');
 const github = require('./github');
 const dashboardBridge = require('./dashboard-bridge');
 const giveawayRuntime = require('./giveaway-runtime');
+const feedbackRuntime = require('./feedback-runtime');
 const reportRuntime = require('./report-runtime');
 const partnerRuntime = require('./partner-runtime');
 const rulesRuntime = require('./rules-runtime');
@@ -33,6 +34,7 @@ const aiRuntime = require('./ai-runtime');
 const applyRuntime = require('./apply-runtime');
 const ticketRuntime = require('./ticket-runtime');
 const settingsPanel = require('./commands-settings');
+const ownerLogin = require('./commands-owner-login');
 const macrumors = require('./macrumors');
 const interactionGuard = require('./interaction-guard');
 const { errText } = require('./util');
@@ -147,6 +149,7 @@ const INTENT_PLANS = [
 // custom-ID prefix -> handler. A NEW button/menu/form only needs one line here.
 const COMPONENT_ROUTES = [
   { prefix: giveawayRuntime.JOIN_PREFIX, handle: giveawayRuntime.handleButton },
+  { prefix: feedbackRuntime.PREFIX, handle: (i) => feedbackRuntime.handleModal(i) },
   { prefix: reportRuntime.PREFIX, handle: reportRuntime.handleButton },
   { prefix: partnerRuntime.PREFIX, handle: partnerRuntime.handleButton },
   { prefix: rulesRuntime.PREFIX, handle: (i) => (i.isModalSubmit() ? rulesRuntime.handleModal(i) : rulesRuntime.handleButton(i)) },
@@ -314,6 +317,18 @@ function wire(client, plan) {
           await command.execute(interaction);
         });
         return;
+      }
+
+      const presenceUI = require('./commands-presence');
+      if ((interaction.isAnySelectMenu() || interaction.isButton()) && interaction.customId.startsWith(presenceUI.MENU_PREFIX)) {
+        return void (await interactionGuard.run(interaction, () => presenceUI.handleComponent(interaction)));
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith(presenceUI.MENU_PREFIX)) {
+        return void (await interactionGuard.run(interaction, () => presenceUI.handleModal(interaction)));
+      }
+
+      if (interaction.isStringSelectMenu() && interaction.customId.startsWith(ownerLogin.PREFIX)) {
+        return void (await interactionGuard.run(interaction, () => ownerLogin.handleComponent(interaction)));
       }
 
       // /settings panel: menus, selectors and buttons all use custom IDs starting with "st:".

@@ -19,9 +19,19 @@ const STATUS_MAP = {
   dnd: PresenceUpdateStatus.DoNotDisturb,
   invisible: PresenceUpdateStatus.Invisible,
 };
-const ACTIVITY_TYPE_MAP = { playing: ActivityType.Playing, watching: ActivityType.Watching, listening: ActivityType.Listening };
+const ACTIVITY_TYPE_MAP = { playing: ActivityType.Playing, watching: ActivityType.Watching, listening: ActivityType.Listening, competing: ActivityType.Competing };
 
 const MAX_HISTORY = 10;
+
+function renderActivityText(text, client) {
+  const memberTotal = client.guilds.cache.reduce((sum, guild) => sum + (guild.memberCount || 0), 0);
+  const uptimeSeconds = Math.floor((client.uptime || 0) / 1000);
+  return String(text || '')
+    .replace(/\{servers\}/gi, String(client.guilds.cache.size))
+    .replace(/\{users\}/gi, memberTotal.toLocaleString('en-US'))
+    .replace(/\{uptime\}/gi, `${Math.floor(uptimeSeconds / 3600)}h ${Math.floor((uptimeSeconds % 3600) / 60)}m`)
+    .replace(/\{ping\}/gi, String(Math.max(0, Math.round(client.ws.ping))));
+}
 
 function getConfig() {
   return storage.getMeta('presence') || { mode: 'auto', history: [] };
@@ -98,7 +108,7 @@ async function apply(client) {
     if (cfg.activity) {
       client.user.setPresence({
         status,
-        activities: [{ name: cfg.activity.text, type: ACTIVITY_TYPE_MAP[cfg.activity.type] || ActivityType.Playing }],
+        activities: [{ name: renderActivityText(cfg.activity.text, client), type: ACTIVITY_TYPE_MAP[cfg.activity.type] || ActivityType.Playing }],
       });
       return;
     }
@@ -108,4 +118,4 @@ async function apply(client) {
   }
 }
 
-module.exports = { getConfig, setAuto, setManual, clearActivity, apply, STATUS_MAP, ACTIVITY_TYPE_MAP, MAX_HISTORY };
+module.exports = { getConfig, setAuto, setManual, clearActivity, apply, STATUS_MAP, ACTIVITY_TYPE_MAP, MAX_HISTORY, renderActivityText };

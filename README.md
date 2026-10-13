@@ -1,10 +1,10 @@
-# tylxrrrr Discord Bot (v7.9.1)
+# tylxrrrr Discord Bot (v8.0.0)
 
 The bot source itself uses a flat Node.js structure built on discord.js v14. The optional `dashboard/` folder contains the static InfinityFree dashboard, Supabase Edge Function, SQL schema, and setup guide.
 
 ---
 
-## v7.9.1 — Supabase dashboard bridge
+## v8.0.0 — Supabase dashboard bridge
 
 Added a Supabase-backed dashboard for InfinityFree. Supabase handles Discord login and securely relays setting changes; the bot uses outbound HTTPS polling only. See `dashboard/README-DASHBOARD.md` for setup.
 
@@ -614,8 +614,17 @@ network access here) - please run `npm run deploy` and `npm start` once on
 your end and let me know if anything still comes up.
 
 
-## New owner and AI memory tools
+## GalaxyBot v8 preview additions
+- `/dashboard` and `/dashboard-status` (moderator/admin/server owner access).
+- `/feedback` anonymous modal; set `FEEDBACK_CHANNEL_ID` to a staff-only text channel. The sender ID mapping is stored privately in `feedback-private.json` so `/feedback-reply` can send a DM without showing the sender identity to staff. Protect and back up this file appropriately.
+- `/feedback-reply reference message` lets moderators reply privately to a feedback reference. A successful DM consumes the reference mapping.
+- `/giveaway create` now requires `item` and `description`; public giveaway embeds show only the item name, while winner DMs include the description.
 
-- `/config bot-logs` (bot owner only): paginated matching log entries and a `.txt` export of all matching retained entries. Treat exports as confidential because logs may contain messages sent directly to the bot.
-- `/ai remember info:<text> scope:<...>` stores persistent notes separately for the user's DMs, that user within the current server, or everyone using the current channel. `/ai memories` lists notes and `/ai forget` clears the selected scope. Notes are saved in `data.json` under bot-wide metadata.
-- `/owner-inspect` is bot-owner-only and DM-only. It offers an allowlisted list of source/configuration files as `.txt` attachments; `.env`, runtime data, and secret files are excluded.
+After updating files, set `FEEDBACK_CHANNEL_ID` in `.env`, run `npm run deploy`, and fully restart the bot process.
+
+
+## v8.1.0 — public host information
+
+- Added public `/hostinfo` for all members. It reports OS/platform/architecture, Node.js version, sampled CPU usage, memory usage, CPU model/core count, host uptime and measurement time.
+- CPU utilization is sampled over 500 ms. On container hosting, OS memory and CPU values may reflect the host rather than container-specific quotas.
+- Deploy updated slash commands with `npm run deploy`, then restart the bot.
