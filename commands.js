@@ -36,6 +36,7 @@ const { config } = require('./commands-config');
 const { githubCheck } = require('./commands-github');
 const dashboardCommands = require('./commands-dashboard');
 const ownerLogin = require('./commands-owner-login');
+const community = require('./commands-community');
 
 const help = menus.buildHelpCommand();
 
@@ -64,6 +65,11 @@ const registry = [
   [core.reload, { category: 'bot', access: 'bot-owner', scope: 'anywhere' }],
   [botStatus, { category: 'bot', access: 'bot-owner', scope: 'anywhere' }],
   [appearance, { category: 'admin', access: 'mod', scope: 'guild' }],
+  [community.honeypot, { category: 'admin', access: 'admin', scope: 'guild' }],
+  [community.autorole, { category: 'admin', access: 'admin', scope: 'guild' }],
+  [community.builder, { category: 'admin', access: 'admin', scope: 'guild' }],
+  [community.custom, { category: 'utility', access: 'everyone', scope: 'guild' }],
+  [community.ticketChannel, { category: 'tickets', access: 'everyone', scope: 'guild' }],
 
   // Moderation (moderator role, administrator role, or server owner)
   [mod.kick, { category: 'moderation', access: 'mod', scope: 'guild' }],

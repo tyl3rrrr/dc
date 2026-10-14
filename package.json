@@ -1,7 +1,7 @@
 {
   "name": "tylxrrrr-discord-bot",
-  "version": "8.3.0",
-  "description": "GalaxyBot v8.3: server-specific nickname appearance menu and expanded bot presence controls.",
+  "version": "9.0.0",
+  "description": "GalaxyBot v9.0: mega update with ticket channels, honeypot protection, autorole, custom command builder, and community tools.",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {

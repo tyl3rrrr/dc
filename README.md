@@ -628,3 +628,23 @@ After updating files, set `FEEDBACK_CHANNEL_ID` in `.env`, run `npm run deploy`,
 - Added public `/hostinfo` for all members. It reports OS/platform/architecture, Node.js version, sampled CPU usage, memory usage, CPU model/core count, host uptime and measurement time.
 - CPU utilization is sampled over 500 ms. On container hosting, OS memory and CPU values may reflect the host rather than container-specific quotas.
 - Deploy updated slash commands with `npm run deploy`, then restart the bot.
+
+## GalaxyBot V9.0 — Mega Update
+
+### New administration and community tools
+- `/ticket-channel` creates a private temporary support channel with a **Close channel** button. The channel is visible to its creator, the bot, and the configured ticket staff role.
+- `/honeypot set channel:#channel` configures a honeypot. Messages in that channel trigger message cleanup, an attempted ban (except protected administrators), and an incident log to the configured log or ticket archive channel. Use a restricted channel and test carefully: a legitimate message can trigger moderation. The bot needs **Ban Members** and **Manage Messages**.
+- `/honeypot disable` turns the honeypot off.
+- `/autorole set role:@role` assigns a role to new members; `/autorole disable` disables it. The bot's highest role must be above the configured role.
+- `/command-builder create name:... response:...` saves a simple custom response. Supported variables: `{user}`, `{mention}`, `{server}`. Run saved responses with `/custom name:...`.
+- `/command-builder intro channel:#channel` posts a guide to custom command variables.
+
+### Permissions and setup
+- `/honeypot`, `/autorole`, and `/command-builder` require **Administrator** permission.
+- `/ticket-channel` is available to server members; ticket staff visibility is controlled by the configured ticket staff role.
+- Enable the **Server Members Intent** in the Discord Developer Portal for autorole to work reliably.
+- The bot needs **Manage Channels**, **View Channel**, **Send Messages**, **Manage Messages**, and **Ban Members** where applicable.
+- Discord does not provide native gradient/neon display-name effects for bots. Appearance color/effect choices can only be previews; the server nickname itself can use supported Unicode characters.
+
+### GitHub description (English)
+GalaxyBot is a modular Discord bot featuring moderation, private support tickets, server automation, configurable appearance, community utilities, and owner tools.

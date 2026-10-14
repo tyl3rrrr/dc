@@ -19,6 +19,7 @@ const automod = require('./automod-api');
 const commandTools = require('./command-tools');
 const permissions = require('./permissions');
 const { handleMemberAdd } = require('./commands-welcome');
+const community = require('./commands-community');
 const presence = require('./presence');
 const github = require('./github');
 const dashboardBridge = require('./dashboard-bridge');
@@ -262,7 +263,7 @@ function wire(client, plan) {
     botlog.log({ type: 'guild', guildId: guild.id, guildName: guild.name, text: 'Removed from server.' });
   });
 
-  if (plan.members) client.on(Events.GuildMemberAdd, (member) => handleMemberAdd(member));
+  if (plan.members) client.on(Events.GuildMemberAdd, (member) => { handleMemberAdd(member); community.handleMemberAdd(member); });
 
   client.on(Events.AutoModerationActionExecution, (execution) => automod.logExecution(execution));
 
@@ -352,6 +353,7 @@ function wire(client, plan) {
       if (interaction.isButton()) {
         if (interaction.customId === OPEN_BUTTON_ID) return void (await handleOpenTicket(interaction));
         if (interaction.customId === CLOSE_BUTTON_ID) return void (await handleCloseTicket(interaction));
+        if (interaction.customId === 'ticket_temp_close') { if (!interaction.inGuild() || (!interaction.memberPermissions?.has('ManageChannels') && !interaction.memberPermissions?.has('Administrator') && !interaction.channel.topic?.includes(`ticket-owner:${interaction.user.id}`))) return interaction.reply({content:'Only the ticket owner or staff can close this channel.',ephemeral:true}); await interaction.reply({content:'🔒 Channel will be deleted in 5 seconds.'}); setTimeout(()=>interaction.channel.delete('Temporary ticket closed').catch(()=>{}),5000); return; }
         if (interaction.customId.startsWith(applyRuntime.START_PREFIX)) {
           return void (await applyRuntime.handleApplyStart(interaction, interaction.customId.slice(applyRuntime.START_PREFIX.length)));
         }
@@ -369,6 +371,7 @@ function wire(client, plan) {
 
   client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
+    if (message.guild) await community.handleHoneypotMessage(message);
 
     // DMs: message content is available regardless of the Message Content
     // Intent (that privileged intent only gates GUILD messages) - so an
