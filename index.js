@@ -319,6 +319,11 @@ function wire(client, plan) {
         return;
       }
 
+      const appearanceUI = require('./commands-appearance');
+      if ((interaction.isAnySelectMenu() || interaction.isButton()) && interaction.customId.startsWith(appearanceUI.APPEARANCE_PREFIX)) {
+        return void (await interactionGuard.run(interaction, () => appearanceUI.handleAppearanceComponent(interaction)));
+      }
+
       const presenceUI = require('./commands-presence');
       if ((interaction.isAnySelectMenu() || interaction.isButton()) && interaction.customId.startsWith(presenceUI.MENU_PREFIX)) {
         return void (await interactionGuard.run(interaction, () => presenceUI.handleComponent(interaction)));

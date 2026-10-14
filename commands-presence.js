@@ -56,7 +56,7 @@ function menuComponents() {
     new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`${MENU_PREFIX}activity`).setPlaceholder('🎭 Choose activity type').addOptions(
       { label: 'Playing', value: 'playing', emoji: '🎮' }, { label: 'Listening', value: 'listening', emoji: '🎧' }, { label: 'Watching', value: 'watching', emoji: '👀' }, { label: 'Competing', value: 'competing', emoji: '🏆' }, { label: 'Streaming', value: 'streaming', emoji: '📡' }, { label: 'Automatic server count', value: 'auto', emoji: '🔄' })),
     new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`${MENU_PREFIX}template`).setPlaceholder('📈 Quick status templates').addOptions(
-      { label: 'Helping users', value: 'users', description: 'Shows a server-member total' }, { label: 'Serving servers', value: 'servers', description: 'Shows the number of servers' }, { label: 'Bot uptime', value: 'uptime', description: 'Shows how long the bot has been online' }, { label: 'Custom text…', value: 'custom', description: 'Enter your own activity text' })),
+      { label: 'Helping users', value: 'users', description: 'Shows a server-member total' }, { label: 'Serving servers', value: 'servers', description: 'Shows the number of servers' }, { label: 'Bot uptime', value: 'uptime', description: 'Shows how long the bot has been online' }, { label: 'Gateway ping', value: 'ping', description: 'Shows the current WebSocket ping' }, { label: 'Slash commands', value: 'commands', description: 'Promotes the /help command' }, { label: 'Community support', value: 'support', description: 'Shows a helpful support message' }, { label: 'Moderation tools', value: 'moderation', description: 'Promotes moderation features' }, { label: 'Custom text…', value: 'custom', description: 'Enter your own activity text' })),
     new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`${MENU_PREFIX}refresh`).setLabel('Refresh statistics').setEmoji('🔄').setStyle(ButtonStyle.Secondary), new ButtonBuilder().setCustomId(`${MENU_PREFIX}clear`).setLabel('Clear activity').setEmoji('🧹').setStyle(ButtonStyle.Secondary))
   ];
 }
@@ -86,8 +86,9 @@ async function handleComponent(interaction) {
       const modal = new ModalBuilder().setCustomId(`${MENU_PREFIX}text-modal:playing`).setTitle('Custom activity text').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('text').setLabel('Activity text').setStyle(TextInputStyle.Short).setPlaceholder('GalaxyBot | /help').setRequired(true).setMaxLength(128)));
       return interaction.showModal(modal);
     }
-    const count = selected === 'servers' ? client.guilds.cache.size : selected === 'users' ? client.guilds.cache.reduce((sum, guild) => sum + (guild.memberCount || 0), 0) : Math.floor((client.uptime || 0) / 1000);
-    const text = selected === 'servers' ? `Active on ${count} servers` : selected === 'users' ? `Helping ${count.toLocaleString('en-US')} server-members` : `Online for ${Math.floor(count / 3600)}h ${Math.floor((count % 3600) / 60)}m`;
+    const count = selected === 'servers' ? client.guilds.cache.size : selected === 'users' ? client.guilds.cache.reduce((sum, guild) => sum + (guild.memberCount || 0), 0) : selected === 'uptime' ? Math.floor((client.uptime || 0) / 1000) : selected === 'ping' ? Math.max(0, Math.round(client.ws.ping)) : 0;
+    const templates = { servers: `Active on ${count} servers`, users: `Helping ${count.toLocaleString('en-US')} server-members`, uptime: `Online for ${Math.floor(count / 3600)}h ${Math.floor((count % 3600) / 60)}m`, ping: `Gateway ping: ${count}ms`, commands: 'Try /help for commands', support: 'Here to help your community', moderation: 'Moderation made simple' };
+    const text = templates[selected] || 'GalaxyBot | /help';
     presence.setManual({ status: presence.getConfig().status || 'online', activityType: 'playing', activityText: text, setBy: who }); await presence.apply(client);
   } else if (action === 'clear') { presence.clearActivity(who); await presence.apply(client); }
   return interaction.update({ embeds: [menuEmbed(client)], components: menuComponents() });
@@ -156,7 +157,7 @@ const botStatus = {
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
-    const who = `${interaction.user.tag} (from: ${interaction.guild.name})`;
+    const who = `${interaction.user.tag}${interaction.guild ? ` (from: ${interaction.guild.name})` : ' (via DM)'}`;
 
     if (sub === 'menu') {
       await interaction.reply({ embeds: [menuEmbed(interaction.client)], components: menuComponents(), flags: EPHEMERAL });

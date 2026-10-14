@@ -24,6 +24,7 @@ const { automodWords } = require('./commands-automod-words');
 const { automodCmd } = require('./commands-automod');
 const { welcomeSetup } = require('./commands-welcome');
 const { botStatus } = require('./commands-presence');
+const { appearance } = require('./commands-appearance');
 const { giveaway } = require('./commands-giveaway');
 const { report } = require('./commands-report');
 const { rules } = require('./commands-rules');
@@ -61,7 +62,8 @@ const registry = [
   [extra.ping, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [help, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [core.reload, { category: 'bot', access: 'bot-owner', scope: 'anywhere' }],
-  [botStatus, { category: 'bot', access: 'bot-owner', scope: 'guild' }],
+  [botStatus, { category: 'bot', access: 'bot-owner', scope: 'anywhere' }],
+  [appearance, { category: 'admin', access: 'mod', scope: 'guild' }],
 
   // Moderation (moderator role, administrator role, or server owner)
   [mod.kick, { category: 'moderation', access: 'mod', scope: 'guild' }],
