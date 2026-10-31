@@ -1,7 +1,7 @@
 {
   "name": "tylxrrrr-discord-bot",
   "version": "9.0.0",
-  "description": "GalaxyBot v9.0: mega update with ticket channels, honeypot protection, autorole, custom command builder, and community tools.",
+  "description": "GalaxyBot v9.0: per-server module management, private AI support tickets, owner link manager and integrated NexVault distribution.",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {

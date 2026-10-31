@@ -1,16 +1,15 @@
 // legacy-support.js
-// Text-based "!support" command (not a slash command) - the same ticket system
-// as /ticket, no ticket channels:
-//   "!support"            - deletes the message and starts the DM flow (like /ticket)
+// Text-based "!support" command (not a slash command) - opens the same private
+// ticket channels as /ticket:
+//   "!support"            - deletes the message and creates a private ticket channel
 //   "!support <request>"  - deletes the message and sends <request> (plus any files
 //                           attached to that message) straight to the ticket channel
-//   "!support config"     - just points to /settings (the old wizard is gone)
+//   "!support config"     - points to /ticket-config (the old wizard is gone)
 //
 // Unlike a slash command, a text message CAN be deleted by the bot (needs the
 // "Manage Messages" permission in that channel; without it the message simply stays).
 //
-// The bot ONLY processes messages from servers (message.guild present). DMs are
-// handled in index.js (ticket-runtime.js / apply-runtime.js).
+// The bot ONLY processes messages from servers (message.guild present).
 //
 // Safeguard against double processing: each message ID is only handled once.
 
@@ -57,25 +56,24 @@ async function handleSupport(message, text) {
 
   if (!text && attachments.length === 0) {
     const result = await ticketRuntime.begin(user, guild);
-    await notice(message, result.ok ? "📬 Check your DMs - I've asked you what you need help with." : `❌ ${result.error}`);
+    await notice(message, result.ok ? `✅ Your private ticket is ready: ${result.channel}` : `❌ ${result.error}`);
     return;
   }
 
-  // Direct ticket: the whole request is in this one message.
+  // The whole request is copied into the private ticket channel.
   const setup = ticketRuntime.checkSetup(guild);
   if (!setup.ok) return void (await notice(message, `❌ ${setup.error}`));
   if (applyRuntime.hasSession(user.id)) return void (await notice(message, '❌ You are in the middle of an application. Finish it first, then open a ticket.'));
-  if (ticketRuntime.hasSession(user.id)) return void (await notice(message, '❌ You already have an open ticket - check your DMs, or type `/ticket-close` to cancel it.'));
 
   const body = text ? content.slice(content.toLowerCase().indexOf('support') + 'support'.length).trim() : '';
   const result = await ticketRuntime.deliver(message.client, guild.id, user, { content: body, attachments });
   if (!result.ok) return void (await notice(message, `❌ ${result.error}`));
 
-  // Confirmation by DM (fall back to a self-deleting note if DMs are closed).
+  // Confirm with a DM (fall back to a self-deleting note if DMs are closed).
   try {
-    await user.send(ticketRuntime.TEXT.done);
+    await user.send(`${ticketRuntime.TEXT.done} ${result.channel}`);
   } catch (err) {
-    await notice(message, ticketRuntime.TEXT.done);
+    await notice(message, `${ticketRuntime.TEXT.done} ${result.channel}`);
   }
 }
 
@@ -93,7 +91,7 @@ async function handleMessage(message) {
 
   const sub = (args[0] || '').toLowerCase();
   if (sub === 'config') {
-    await message.reply('⚙️ The old setup wizard is gone. An administrator can now set the **Ticket channel** and **Ticket role** with `/settings` (pick them from the menu).');
+    await message.reply('⚙️ Use `/ticket-config` to set the ticket category, staff role, AI and server support knowledge.');
     return;
   }
 

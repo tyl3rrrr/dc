@@ -5,6 +5,7 @@ const { SlashCommandBuilder, EmbedBuilder, version: djsVersion } = require('disc
 const config = require('./config');
 const pkg = require('./package.json');
 const { EPHEMERAL } = require('./util');
+const nexvault = require('./nexvault');
 
 function formatUptime(ms) {
   let totalSeconds = Math.floor(ms / 1000);
@@ -34,44 +35,44 @@ const uptime = {
 };
 
 const status = {
-  data: new SlashCommandBuilder().setName('status').setDescription('Checks whether the website is reachable'),
+  data: new SlashCommandBuilder().setName('status').setDescription('Checks the project websites and NexVault API'),
   async execute(interaction) {
     await interaction.deferReply();
-    const url = config.links.website;
-    const TIMEOUT_MS = 6000;
-    const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const start = Date.now();
+    const websiteUrl = config.links.website;
+    const websiteCheck = (async () => {
+      const started = Date.now();
+      try {
+        const response = await fetch(websiteUrl, { method: 'GET', signal: AbortSignal.timeout(6000), redirect: 'follow' });
+        return { ok: response.ok, code: response.status, latency: Date.now() - started, error: null };
+      } catch (error) {
+        return { ok: false, code: null, latency: Date.now() - started, error: error.name === 'AbortError' ? 'Timed out after 6 seconds' : String(error.message || error).slice(0, 250) };
+      }
+    })();
+    const apiConfigured = Boolean(String(process.env.NEXVAULT_API || '').trim());
+    const [website, nv] = await Promise.all([
+      websiteCheck,
+      apiConfigured ? nexvault.websiteStatus() : Promise.resolve(null),
+    ]);
 
-    try {
-      const res = await fetch(url, { method: 'GET', signal: controller.signal, redirect: 'follow' });
-      const ms = Date.now() - start;
-      const embed = new EmbedBuilder()
-        .setTitle('🌐 Website Status')
-        .setColor(res.ok ? 0x57f287 : 0xfee75c)
-        .addFields(
-          { name: 'URL', value: url },
-          { name: 'Reachability', value: res.ok ? '🟢 Reachable' : `🟡 HTTP status ${res.status}` },
-          { name: 'HTTP code', value: String(res.status), inline: true },
-          { name: 'Response time', value: `${ms} ms`, inline: true }
-        )
-        .setTimestamp();
-      await interaction.editReply({ embeds: [embed] });
-    } catch (err) {
-      const timedOut = err.name === 'AbortError';
-      const embed = new EmbedBuilder()
-        .setTitle('🌐 Website Status')
-        .setColor(0xed4245)
-        .addFields(
-          { name: 'URL', value: url },
-          { name: 'Reachability', value: '🔴 Unreachable' },
-          { name: 'Error', value: timedOut ? `Timed out (> ${TIMEOUT_MS / 1000}s)` : err.message }
-        )
-        .setTimestamp();
-      await interaction.editReply({ embeds: [embed] });
-    } finally {
-      clearTimeout(timeoutHandle);
+    const embed = new EmbedBuilder()
+      .setTitle('🌐 Service Status')
+      .setColor(website.ok && (!nv || nv.ok) ? 0x57f287 : 0xfee75c)
+      .addFields(
+        { name: 'GalaxyBot Website', value: `${website.ok ? '🟢 Reachable' : '🔴 Unreachable'}\nURL: ${websiteUrl}\nHTTP: ${website.code ?? 'n/a'}\nLatency: ${website.latency} ms${website.error ? `\nError: ${website.error}` : ''}`.slice(0, 1024) },
+      )
+      .setTimestamp();
+
+    if (apiConfigured) {
+      embed.addFields({
+        name: 'NexVault API',
+        value: nv?.ok
+          ? `🟢 Online\nLatency: ${nv.latency} ms\nCategories: ${nv.categories}\nAvailable codes: ${nv.available}`
+          : `🔴 Offline / blocked\nLatency: ${nv?.latency ?? 'n/a'} ms\n${String(nv?.error || 'Unknown API error').slice(0, 700)}`,
+      });
+    } else {
+      embed.addFields({ name: 'NexVault API', value: '⚪ Not configured — add the complete API URL to `NEXVAULT_API` in `.env`.' });
     }
+    await interaction.editReply({ embeds: [embed] });
   },
 };
 

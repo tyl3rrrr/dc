@@ -9,7 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits, Events, Collection, Options, Partials } = require('discord.js');
+const { Client, GatewayIntentBits, Events, Collection, Options, Partials, PermissionFlagsBits, ChannelType } = require('discord.js');
 
 const config = require('./config'); // must stay first: loading it reads the .env file (dotenv) for every other module
 const commandList = require('./commands');
@@ -17,9 +17,12 @@ const { OPEN_BUTTON_ID, CLOSE_BUTTON_ID, handleOpenTicket, handleCloseTicket } =
 const legacySupport = require('./legacy-support');
 const automod = require('./automod-api');
 const commandTools = require('./command-tools');
+const moduleManager = require('./module-manager');
+const manageCommands = require('./commands-manage');
+const linksCommands = require('./commands-links');
+const nexvault = require('./nexvault');
 const permissions = require('./permissions');
 const { handleMemberAdd } = require('./commands-welcome');
-const community = require('./commands-community');
 const presence = require('./presence');
 const github = require('./github');
 const dashboardBridge = require('./dashboard-bridge');
@@ -156,6 +159,9 @@ const COMPONENT_ROUTES = [
   { prefix: rulesRuntime.PREFIX, handle: (i) => (i.isModalSubmit() ? rulesRuntime.handleModal(i) : rulesRuntime.handleButton(i)) },
   { prefix: menus.HELP_PREFIX, handle: menus.handleComponent },
   { prefix: menus.CHANGELOG_PREFIX, handle: menus.handleComponent },
+  { prefix: manageCommands.PREFIX, handle: manageCommands.handleComponent },
+  { prefix: linksCommands.PREFIX, handle: linksCommands.handleComponent },
+  { prefix: ticketRuntime.PREFIX, handle: ticketRuntime.handleTicketComponent },
 ];
 
 function createClient(plan) {
@@ -217,6 +223,48 @@ function markInteractionProcessed(id) {
   }
 }
 
+async function postGuildJoinNotice(client, guild) {
+  try {
+    const storage = require('./storage');
+    const sentNotices = storage.getMeta('guildJoinNotices') || {};
+    if (sentNotices[guild.id]) return;
+    const settings = storage.getGuildSettings(guild.id);
+    const roleIds = new Set([settings.adminRoleId, settings.modRoleId, settings.ticketStaffRoleId].filter(id => id && guild.roles.cache.has(id)));
+    for (const role of guild.roles.cache.values()) {
+      if (roleIds.size >= 30) break;
+      if (role.id === guild.id) continue;
+      const namedAdminOrMod = /(administrator|admin|moderator|moderation|\bmods?\b)/i.test(role.name);
+      const permissionAdminOrMod = role.permissions?.has([
+        PermissionFlagsBits.Administrator,
+        PermissionFlagsBits.ModerateMembers,
+        PermissionFlagsBits.KickMembers,
+        PermissionFlagsBits.BanMembers,
+        PermissionFlagsBits.ManageMessages,
+      ]);
+      if (namedAdminOrMod || permissionAdminOrMod) roleIds.add(role.id);
+    }
+    const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
+    const canSend = channel => {
+      if (!channel || ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type) || !channel.send) return false;
+      const perms = me && channel.permissionsFor(me);
+      return !perms || perms.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]);
+    };
+    const namedGeneral = guild.channels.cache.find(ch => ch.name?.toLowerCase() === 'general' && canSend(ch));
+    const channel = namedGeneral || (canSend(guild.systemChannel) && guild.systemChannel) || guild.channels.cache.find(canSend);
+    if (!channel) {
+      console.warn(`No writable general text channel found in ${guild.name} (${guild.id}); setup notice was not sent.`);
+      return;
+    }
+    const roleMentions = [...roleIds].map(id => `<@&${id}>`).join(' ');
+    const ownerMention = guild.ownerId ? `<@${guild.ownerId}>` : '';
+    const content = `${ownerMention} ${roleMentions}\n\n**Thanks for adding GalaxyBot!**\nPlease run **/settings** to configure the bot for this server. Set your administrator and moderator roles, ticket staff role, logging channels and other server-specific options. Use **/manage** to enable or disable modules and individual commands. All modules are enabled by default.`.trim();
+    await channel.send({ content: content.slice(0, 1900), allowedMentions: { users: guild.ownerId ? [guild.ownerId] : [], roles: [...roleIds] } });
+    storage.setMeta('guildJoinNotices', { ...sentNotices, [guild.id]: Date.now() });
+  } catch (error) {
+    console.warn(`Could not post the setup notice in ${guild.id}:`, errText(error));
+  }
+}
+
 function wire(client, plan) {
   client.commands = commands;
 
@@ -228,7 +276,14 @@ function wire(client, plan) {
           '   Enable it at https://discord.com/developers/applications -> your app -> Bot -> Privileged Gateway Intents, then restart.'
       );
     }
+    if (!plan.content) {
+      console.error(
+        '🚨 TICKET AI AND THE !support TEXT COMMAND ARE INACTIVE: the "MESSAGE CONTENT INTENT" is not enabled.\n' +
+          '   Enable it at https://discord.com/developers/applications -> your app -> Bot -> Privileged Gateway Intents, then restart.'
+      );
+    }
     await presence.apply(readyClient);
+    nexvault.start(readyClient); // Optional NexVault activity rotation (NEXVAULT_PRESENCE_ROTATION=true).
     // Refresh presence in automatic mode regularly but sparingly (no needless
     // API calls on every small change) - every 10 minutes is enough.
     setInterval(() => presence.apply(readyClient), 10 * 60 * 1000);
@@ -252,10 +307,20 @@ function wire(client, plan) {
     automod.provisionAllGuilds(readyClient).catch((err) => console.warn('AutoMod provisioning:', errText(err)));
   });
 
-  client.on(Events.GuildCreate, (guild) => {
+  client.on(Events.GuildCreate, async (guild) => {
+    // Initial GUILD_CREATE events for already-connected servers can occur during login.
+    // Only a guild added after the client is ready is treated as a new installation.
+    const isNewInstallation = client.isReady();
     automod.provisionGuild(client, guild).catch(() => {});
     presence.apply(client).catch(() => {}); // server count changed (in automatic mode)
     botlog.log({ type: 'guild', guildId: guild.id, guildName: guild.name, text: `Joined server (owner ${guild.ownerId}, ${guild.memberCount ?? '?'} members).` });
+    try {
+      const sync = await commandTools.syncGuild(client, guild.id, commandList, true);
+      console.log(`✅ Registered ${sync.count} server commands for newly joined guild ${guild.id}.`);
+    } catch (error) {
+      console.warn(`Could not register commands for newly joined guild ${guild.id}:`, errText(error));
+    }
+    if (isNewInstallation) await postGuildJoinNotice(client, guild);
   });
 
   client.on(Events.GuildDelete, (guild) => {
@@ -263,7 +328,7 @@ function wire(client, plan) {
     botlog.log({ type: 'guild', guildId: guild.id, guildName: guild.name, text: 'Removed from server.' });
   });
 
-  if (plan.members) client.on(Events.GuildMemberAdd, (member) => { handleMemberAdd(member); community.handleMemberAdd(member); });
+  if (plan.members) client.on(Events.GuildMemberAdd, (member) => handleMemberAdd(member));
 
   client.on(Events.AutoModerationActionExecution, (execution) => automod.logExecution(execution));
 
@@ -300,6 +365,10 @@ function wire(client, plan) {
           );
           return;
         }
+        if (interaction.guildId && !moduleManager.isEnabled(interaction.guildId, command)) {
+          await interaction.reply({ content: 'This command or its module is currently disabled on this server. An administrator can enable it with `/manage`.', flags: require('./util').EPHEMERAL });
+          return;
+        }
         stats.recordCommand(interaction.commandName); // real usage numbers for /stats
         // CENTRAL permission check (permissions.js) - before EVERY command.
         // interaction-guard.js adds the 3-second safety net (auto "thinking..." state for
@@ -320,11 +389,6 @@ function wire(client, plan) {
         return;
       }
 
-      const appearanceUI = require('./commands-appearance');
-      if ((interaction.isAnySelectMenu() || interaction.isButton()) && interaction.customId.startsWith(appearanceUI.APPEARANCE_PREFIX)) {
-        return void (await interactionGuard.run(interaction, () => appearanceUI.handleAppearanceComponent(interaction)));
-      }
-
       const presenceUI = require('./commands-presence');
       if ((interaction.isAnySelectMenu() || interaction.isButton()) && interaction.customId.startsWith(presenceUI.MENU_PREFIX)) {
         return void (await interactionGuard.run(interaction, () => presenceUI.handleComponent(interaction)));
@@ -335,6 +399,9 @@ function wire(client, plan) {
 
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith(ownerLogin.PREFIX)) {
         return void (await interactionGuard.run(interaction, () => ownerLogin.handleComponent(interaction)));
+      }
+      if ((interaction.isStringSelectMenu() || interaction.isButton()) && interaction.customId.startsWith(ownerLogin.INSPECT_PREFIX)) {
+        return void (await interactionGuard.run(interaction, () => ownerLogin.handleInspectComponent(interaction)));
       }
 
       // /settings panel: menus, selectors and buttons all use custom IDs starting with "st:".
@@ -353,7 +420,6 @@ function wire(client, plan) {
       if (interaction.isButton()) {
         if (interaction.customId === OPEN_BUTTON_ID) return void (await handleOpenTicket(interaction));
         if (interaction.customId === CLOSE_BUTTON_ID) return void (await handleCloseTicket(interaction));
-        if (interaction.customId === 'ticket_temp_close') { if (!interaction.inGuild() || (!interaction.memberPermissions?.has('ManageChannels') && !interaction.memberPermissions?.has('Administrator') && !interaction.channel.topic?.includes(`ticket-owner:${interaction.user.id}`))) return interaction.reply({content:'Only the ticket owner or staff can close this channel.',ephemeral:true}); await interaction.reply({content:'🔒 Channel will be deleted in 5 seconds.'}); setTimeout(()=>interaction.channel.delete('Temporary ticket closed').catch(()=>{}),5000); return; }
         if (interaction.customId.startsWith(applyRuntime.START_PREFIX)) {
           return void (await applyRuntime.handleApplyStart(interaction, interaction.customId.slice(applyRuntime.START_PREFIX.length)));
         }
@@ -371,7 +437,6 @@ function wire(client, plan) {
 
   client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
-    if (message.guild) await community.handleHoneypotMessage(message);
 
     // DMs: message content is available regardless of the Message Content
     // Intent (that privileged intent only gates GUILD messages) - so an
@@ -402,6 +467,8 @@ function wire(client, plan) {
     }
 
     try {
+      const isTicket = await ticketRuntime.handleGuildMessage(message);
+      if (isTicket) return;
       if (plan.content) await legacySupport.handleMessage(message);
       const handledMention = await aiRuntime.handleMention(message, { hasContent: plan.content });
       if (!handledMention) return;

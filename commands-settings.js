@@ -39,9 +39,7 @@ const TEXT_CHANNELS = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
 const SETTINGS = [
   { id: 'admin', group: 'Team', label: 'Administrator role', desc: 'Members with this role can use all admin commands.', type: 'role', team: true, path: ['adminRoleId'] },
   { id: 'mod', group: 'Team', label: 'Moderator role', desc: 'Members with this role can use the moderation commands.', type: 'role', team: true, path: ['modRoleId'] },
-  { id: 'ticketrole', group: 'Tickets', label: 'Ticket role', desc: 'Gets pinged whenever a new ticket arrives.', type: 'role', path: ['ticketStaffRoleId'] },
-  { id: 'ticketchan', group: 'Tickets', label: 'Ticket inbox channel', desc: 'New ticket requests are posted here.', type: 'channel', post: true, path: ['ticketChannelId'] },
-  { id: 'ticketarchive', group: 'Tickets', label: 'Ticket archive channel', desc: 'Every submitted ticket is also archived here for later review.', type: 'channel', post: true, path: ['ticketArchiveChannelId'] },
+  { id: 'ticketrole', group: 'Tickets', label: 'Ticket staff role', desc: 'Can view and claim private tickets; Gemini mentions this role when a human needs to take over.', type: 'role', path: ['ticketStaffRoleId'] },
   { id: 'log', group: 'Channels', label: 'Log channel', desc: 'Moderation actions, joins and setting changes are logged here.', type: 'channel', post: true, path: ['logChannelId'] },
   { id: 'suggest', group: 'Channels', label: 'Suggestions channel', desc: 'Where /suggest posts. Clear it to turn /suggest off.', type: 'channel', post: true, path: ['suggestChannelId'] },
   { id: 'macrumors', group: 'Channels', label: 'MacRumors channel', desc: 'New MacRumors articles are posted here. Clear it to turn them off.', type: 'channel', post: true, path: ['macrumorsChannelId'], after: 'macrumors' },

@@ -7,7 +7,7 @@
 //   2. OpenAI/ChatGPT  CHATGPT_KEY="sk-..."     (needs paid API credit, a free ChatGPT account does NOT include it)
 // Without any key all AI features stay silent (nothing breaks).
 //
-// Optional .env:  GEMINI_MODEL / CHATGPT_MODEL  model name (defaults: gemini-2.5-flash / gpt-5.4-mini)
+// Optional .env:  GEMINI_MODEL / CHATGPT_MODEL  model name (defaults: gemini-3.8-flash / gpt-5.4-mini)
 //                 AI_MAX_TOKENS     maximum answer length (default 2048)
 //                 AI_DAILY_LIMIT    messages per person and day (default 40, bot owner unlimited)
 //                 AI_GLOBAL_LIMIT   messages per day for everybody together (default 400 - the free
@@ -25,8 +25,8 @@ const { truncate, errText } = require('./util');
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODEL = 'gemini-3.5-flash'; // tried once when the default is not available any more
+const GEMINI_DEFAULT_MODEL = 'gemini-3.8-flash';
+const GEMINI_FALLBACK_MODEL = 'gemini-3.5-flash-lite'; // tried once when the default model is not available
 const HISTORY_MAX_MESSAGES = 10;
 const HISTORY_TTL_MS = 30 * 60 * 1000;
 const INPUT_MAX_CHARS = 1500;

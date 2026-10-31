@@ -12,6 +12,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const config = require('./config');
 const { EPHEMERAL, truncate } = require('./util');
+const moduleManager = require('./module-manager');
 
 const HELP_PREFIX = 'hp:';
 const CHANGELOG_PREFIX = 'cl:';
@@ -113,11 +114,16 @@ function buildChangelog(page) {
   return { embeds: [embed], components: [row] };
 }
 
+function visibleCommands(interaction) {
+  const all = [...interaction.client.commands.values()];
+  return interaction.guildId ? all.filter(command => moduleManager.isEnabled(interaction.guildId, command)) : all;
+}
+
 function buildHelpCommand() {
   return {
-    data: new SlashCommandBuilder().setName('help').setDescription('Shows all commands in a menu'),
+    data: new SlashCommandBuilder().setName('help').setDescription('Shows all available commands in a menu'),
     async execute(interaction) {
-      await interaction.reply({ ...buildHelp([...interaction.client.commands.values()], null), flags: EPHEMERAL });
+      await interaction.reply({ ...buildHelp(visibleCommands(interaction), null), flags: EPHEMERAL });
     },
   };
 }
@@ -132,7 +138,7 @@ const changelog = {
 // Select menu + page buttons.
 async function handleComponent(interaction) {
   if (interaction.customId === HELP_MENU_ID && interaction.isStringSelectMenu()) {
-    await interaction.update(buildHelp([...interaction.client.commands.values()], interaction.values[0]));
+    await interaction.update(buildHelp(visibleCommands(interaction), interaction.values[0]));
     return;
   }
   if (interaction.customId.startsWith(CHANGELOG_PREFIX)) {

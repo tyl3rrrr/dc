@@ -24,7 +24,6 @@ const { automodWords } = require('./commands-automod-words');
 const { automodCmd } = require('./commands-automod');
 const { welcomeSetup } = require('./commands-welcome');
 const { botStatus } = require('./commands-presence');
-const { appearance } = require('./commands-appearance');
 const { giveaway } = require('./commands-giveaway');
 const { report } = require('./commands-report');
 const { rules } = require('./commands-rules');
@@ -36,7 +35,10 @@ const { config } = require('./commands-config');
 const { githubCheck } = require('./commands-github');
 const dashboardCommands = require('./commands-dashboard');
 const ownerLogin = require('./commands-owner-login');
-const community = require('./commands-community');
+const { manage } = require('./commands-manage');
+const { links, linksManage } = require('./commands-links');
+const { ticketConfig } = require('./commands-ticket-config');
+const { generate } = require('./commands-nexvault');
 
 const help = menus.buildHelpCommand();
 
@@ -56,6 +58,10 @@ const registry = [
   [consoleCmd, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
   [ownerLogin.login, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
   [ownerLogin.ownerInspect, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
+  [linksManage, { category: 'owner', access: 'bot-owner', scope: 'anywhere' }],
+  [manage, { category: 'admin', access: 'admin', scope: 'guild' }],
+  [links, { category: 'utility', access: 'everyone', scope: 'guild' }],
+  [generate, { category: 'utility', access: 'everyone', scope: 'guild' }],
   [ask, { category: 'ai', access: 'everyone', scope: 'anywhere' }],
   [code, { category: 'ai', access: 'everyone', scope: 'anywhere' }],
   [tos, { category: 'general', access: 'everyone', scope: 'anywhere' }],
@@ -63,13 +69,7 @@ const registry = [
   [extra.ping, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [help, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [core.reload, { category: 'bot', access: 'bot-owner', scope: 'anywhere' }],
-  [botStatus, { category: 'bot', access: 'bot-owner', scope: 'anywhere' }],
-  [appearance, { category: 'admin', access: 'mod', scope: 'guild' }],
-  [community.honeypot, { category: 'admin', access: 'admin', scope: 'guild' }],
-  [community.autorole, { category: 'admin', access: 'admin', scope: 'guild' }],
-  [community.builder, { category: 'admin', access: 'admin', scope: 'guild' }],
-  [community.custom, { category: 'utility', access: 'everyone', scope: 'guild' }],
-  [community.ticketChannel, { category: 'tickets', access: 'everyone', scope: 'guild' }],
+  [botStatus, { category: 'bot', access: 'bot-owner', scope: 'guild' }],
 
   // Moderation (moderator role, administrator role, or server owner)
   [mod.kick, { category: 'moderation', access: 'mod', scope: 'guild' }],
@@ -109,7 +109,8 @@ const registry = [
 
   // Tickets
   [ticket, { category: 'tickets', access: 'everyone', scope: 'guild' }],
-  [ticketClose, { category: 'tickets', access: 'everyone', scope: 'anywhere' }],
+  [ticketClose, { category: 'tickets', access: 'everyone', scope: 'guild' }],
+  [ticketConfig, { category: 'tickets', access: 'admin', scope: 'guild' }],
 
   // Utility & fun
   [utility.userinfo, { category: 'utility', access: 'everyone', scope: 'anywhere' }],
@@ -125,6 +126,8 @@ const allCommands = registry.map(([cmd, meta]) => {
   cmd.category = meta.category;
   cmd.access = meta.access;
   cmd.scope = meta.scope;
+  // Owner operations are registered only in bot DMs, never in server command pickers.
+  if (meta.category === 'owner') cmd.dmOnly = true;
   return cmd;
 });
 

@@ -39,9 +39,14 @@ const links = {
   website: process.env.WEBSITE_URL || 'https://galaxybot.is-great.org/',
   tos: process.env.TOS_URL || 'https://tylxrrrr.is-great.net/tos-bot.html',
   privacy: process.env.PRIVACY_URL || 'https://tylxrrrr.is-great.net/privacy-bot.html',
+  nexvault: process.env.NEXVAULT_WEBSITE_URL || 'https://nexvault.is-great.org/',
 };
 
 const changelog = [
+  {
+    date: '2026-10-31',
+    text: 'v9.0.0: per-server module and command toggles (/manage) with server-specific command registration; setup greeting on guild join; private ticket channels with Claim/Close controls, Gemini support responses and staff escalation (/ticket-config); editable public links (/links, /links-manage); expanded owner source inspection; NexVault API integration (/generate and combined /status).',
+  },
   {
     date: '2026-09-09',
     text: 'Bot created: added status display, /antimdm, /web and /uptime.',
@@ -158,6 +163,7 @@ function reloadLinks() {
   links.website = process.env.WEBSITE_URL || links.website;
   links.tos = process.env.TOS_URL || links.tos;
   links.privacy = process.env.PRIVACY_URL || links.privacy;
+  links.nexvault = process.env.NEXVAULT_WEBSITE_URL || links.nexvault;
 }
 
 function reloadAll() {

@@ -85,6 +85,7 @@ function clearActivity(setBy) {
 // Applies the currently stored configuration to the Discord client. Called
 // on startup, periodically (in automatic mode), and after every change.
 async function apply(client) {
+  if (String(process.env.NEXVAULT_PRESENCE_ROTATION || '').toLowerCase() === 'true') return;
   try {
     const cfg = getConfig();
     const guildCount = client.guilds.cache.size;
