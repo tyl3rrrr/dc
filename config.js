@@ -45,7 +45,7 @@ const links = {
 const changelog = [
   {
     date: '2026-10-31',
-    text: 'v9.0.0: per-server module and command toggles (/manage) with server-specific command registration; setup greeting on guild join; private ticket channels with Claim/Close controls, Gemini support responses and staff escalation (/ticket-config); editable public links (/links, /links-manage); expanded owner source inspection; NexVault API integration (/generate and combined /status).',
+    text: 'v9.0.0: per-server module and command toggles (/manage) with server-specific command registration; setup greeting on guild join; private ticket channels with Claim/Close controls and staff escalation (/ticket-config); editable public links (/links, /links-manage); expanded owner source inspection; NexVault API integration (/generate and combined /status).',
   },
   {
     date: '2026-09-09',
@@ -143,15 +143,13 @@ const changelog = [
     text:
       'v7.8.0: /adm-reload is back, /help now lists exactly the commands that currently exist, ' +
       'the bot owner can review the bot\'s own activity log (/config bot-logs: DMs received, ' +
-      'commands used, errors, AI chats) to prevent misuse, /console gives the bot owner deep ' +
-      'process/debug access, and the bot now has AI chat built in (/ask, @mentioning the bot, ' +
-      'and individual DM replies) powered by ChatGPT (CHATGPT_KEY in .env).',
+      'commands used, errors) to prevent misuse, /console gives the bot owner deep ' +
+      'process/debug access. Automated chat replies and the related commands are not included in this release.',
   },
   {
     date: '2026-10-07',
     text:
-      'v7.8.1: the AI now runs on Google Gemini (free, GEMINI_KEY in .env); OpenAI/ChatGPT stays available as ' +
-      'an alternative. Clearer messages when a free limit or credit is used up.',
+      'v7.8.1: improved service limits and clearer messages when a free limit or credit is used up.',
   },
 ];
 

@@ -4,7 +4,7 @@
 // index.js, deploy-commands.js and command-tools.js only import this file.
 //
 // Eintrag: [command, { category, access, scope }]
-//   category: general | moderation | admin | welcome | apply | tickets | reports | rules | partner | giveaway | utility | bot | ai | owner
+//   category: general | moderation | admin | welcome | apply | tickets | reports | rules | partner | giveaway | utility | bot | owner
 //   access  : everyone | mod | admin | bot-owner | superuser  (or { default, sub: {...} })
 //   scope   : 'anywhere' (servers, DMs, user install) | 'guild' (only servers the bot is in)
 //
@@ -18,7 +18,6 @@ const utility = require('./commands-utility');
 const { settings } = require('./commands-settings');
 const { ticket, ticketClose } = require('./commands-tickets');
 const { admReload, consoleCmd } = require('./commands-admin');
-const { ask, code } = require('./commands-ai');
 const menus = require('./menus');
 const { automodWords } = require('./commands-automod-words');
 const { automodCmd } = require('./commands-automod');
@@ -62,8 +61,6 @@ const registry = [
   [manage, { category: 'admin', access: 'admin', scope: 'guild' }],
   [links, { category: 'utility', access: 'everyone', scope: 'guild' }],
   [generate, { category: 'utility', access: 'everyone', scope: 'guild' }],
-  [ask, { category: 'ai', access: 'everyone', scope: 'anywhere' }],
-  [code, { category: 'ai', access: 'everyone', scope: 'anywhere' }],
   [tos, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [privacyPolicy, { category: 'general', access: 'everyone', scope: 'anywhere' }],
   [extra.ping, { category: 'general', access: 'everyone', scope: 'anywhere' }],

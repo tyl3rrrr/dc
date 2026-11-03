@@ -1,7 +1,7 @@
 // botlog.js
 // The bot's own activity log - for the BOT OWNER ONLY (shown with /config bot logs).
 // Its purpose is abuse prevention: you can see which DMs the bot received (from whom, with what
-// content), which commands were used where, errors, server joins/leaves, AI chats and every use of
+// content), which commands were used where, errors, server joins/leaves and every use of
 // the owner tools - so the bot is not misused for anything illegal.
 //
 // - Stored as JSON lines in botlogs.jsonl (next to index.js, readable only by the bot's user).
@@ -22,7 +22,7 @@ const MAX_LINES = 20000;
 const MAX_TEXT = 2000;
 const PRUNE_EVERY_MS = 6 * 60 * 60 * 1000;
 
-const TYPES = ['dm', 'command', 'error', 'guild', 'ai', 'audit'];
+const TYPES = ['dm', 'command', 'error', 'guild', 'audit'];
 
 let queue = Promise.resolve();
 function enqueue(task) {

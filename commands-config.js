@@ -1,6 +1,6 @@
 // commands-config.js
 // /config - small, separate settings group requested by name (distinct from /settings). Holds the
-// suggestions channel, the MacRumors news channel, the GitHub release channel, AI on/off and the
+// suggestions channel, the MacRumors news channel, and the GitHub release channel plus the
 // bot owner's activity log viewer.
 // Access is checked centrally in permissions.js: administrators for everything, moderators AND
 // administrators for `/config macrumors`, and the BOT OWNER ONLY for `/config bot-logs` (see commands.js).
@@ -13,7 +13,7 @@ const botlog = require('./botlog');
 const logging = require('./logging');
 const { EPHEMERAL, errText, truncate } = require('./util');
 
-const TYPE_LABEL = { dm: '📩 DM', command: '⌨️ Command', error: '⚠️ Error', guild: '🏠 Server', ai: '🧠 AI', audit: '📋 Other' };
+const TYPE_LABEL = { dm: '📩 DM', command: '⌨️ Command', error: '⚠️ Error', guild: '🏠 Server', audit: '📋 Other' };
 const TYPE_CHOICES = [{ name: 'All', value: 'all' }, ...botlog.TYPES.map((t) => ({ name: TYPE_LABEL[t].replace(/^\S+\s/, ''), value: t }))];
 
 const config = {
@@ -54,14 +54,8 @@ const config = {
     )
     .addSubcommand((s) =>
       s
-        .setName('ai')
-        .setDescription('Turns @mention AI replies on or off in this server (/ask and DMs are unaffected)')
-        .addBooleanOption((o) => o.setName('enabled').setDescription('On or off').setRequired(true))
-    )
-    .addSubcommand((s) =>
-      s
         .setName('bot-logs')
-        .setDescription('BOT OWNER ONLY: shows the activity log of the bot itself (DMs, commands, AI chats, errors)')
+        .setDescription('BOT OWNER ONLY: shows the activity log of the bot itself (DMs, commands, errors)')
         .addStringOption((o) => o.setName('type').setDescription('Only this kind of entry').addChoices(...TYPE_CHOICES).setRequired(false))
         .addUserOption((o) => o.setName('user').setDescription('Only entries from this user').setRequired(false))
         .addStringOption((o) => o.setName('search').setDescription('Only entries containing this text').setMinLength(2).setRequired(false))
@@ -89,13 +83,6 @@ const config = {
       return;
     }
 
-    if (sub === 'ai') {
-      const enabled = interaction.options.getBoolean('enabled');
-      storage.setGuildSetting(guildId, 'aiEnabled', enabled);
-      logging.logSettingChange(interaction.client, guildId, { setting: 'AI @mention replies', value: enabled ? 'on' : 'off', moderator: interaction.user.tag });
-      await interaction.reply({ content: `✅ AI replies to @mentions are now **${enabled ? 'on' : 'off'}** in this server. \`/ask\` and DMs to the bot still work either way.`, flags: EPHEMERAL });
-      return;
-    }
 
     if (sub === 'bot-logs') {
       await interaction.deferReply({ flags: EPHEMERAL });
@@ -116,7 +103,7 @@ const config = {
       }
       const lines = entries.map((e) => {
         const who = e.userTag ? `${e.userTag} (\`${e.userId}\`)` : e.userId ? `\`${e.userId}\`` : 'unknown';
-        const where = e.guildName ? ` · ${truncate(e.guildName, 40)}` : e.type === 'dm' || e.type === 'ai' ? ' · DM' : '';
+        const where = e.guildName ? ` · ${truncate(e.guildName, 40)}` : e.type === 'dm' ? ' · DM' : '';
         const files = e.attachments && e.attachments.length ? `\n📎 ${e.attachments.map((a) => a.name).join(', ')}` : '';
         return `**${TYPE_LABEL[e.type] || e.type}** <t:${Math.floor(e.t / 1000)}:R> - ${who}${where}\n${truncate(e.text || '(no text)', 300)}${files}`;
       });
