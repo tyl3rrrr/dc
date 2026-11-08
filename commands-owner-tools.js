@@ -7,8 +7,8 @@ const permissions = require('./permissions');
 const { EPHEMERAL } = require('./util');
 
 const ALLOWED = [
-  'index.js', 'commands.js', 'commands-config.js', 'commands-admin.js',
-  'commands-core.js', 'commands-mod.js', 'commands-settings.js',
+  'index.js', 'commands.js', 'commands-config.js', 'commands-ai.js', 'commands-admin.js',
+  'commands-core.js', 'commands-mod.js', 'commands-settings.js', 'ai.js', 'ai-runtime.js',
   'botlog.js', 'logging.js', 'permissions.js', 'storage.js', 'config.js', 'dashboard-bridge.js',
   'deploy-commands.js', 'package.json', 'README.md', 'dashboard/README-DASHBOARD.md',
   'dashboard/supabase/functions/dashboard-api/index.ts', 'dashboard/supabase/migrations/202610090001_dashboard.sql'

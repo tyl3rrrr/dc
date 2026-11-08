@@ -32,6 +32,7 @@ const CATEGORIES = [
   ['giveaway', '🎉 Giveaways', 'Giveaways with several winners'],
   ['utility', '🧰 Utility', 'Handy tools'],
   ['bot', '🤖 Bot', 'Bot status and statistics'],
+  ['ai', '🧠 AI', 'Ask the AI questions'],
   ['owner', '🔐 Bot owner', 'Operating and debugging the bot itself'],
 ];
 const OTHER = ['__other', '📦 Other', 'Everything else'];

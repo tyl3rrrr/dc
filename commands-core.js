@@ -48,7 +48,7 @@ const status = {
         return { ok: false, code: null, latency: Date.now() - started, error: error.name === 'AbortError' ? 'Timed out after 6 seconds' : String(error.message || error).slice(0, 250) };
       }
     })();
-    const apiConfigured = Boolean(String(process.env.NEXVAULT_API_URL || '').trim() && String(process.env.NEXVAULT_API_KEY || '').trim());
+    const apiConfigured = Boolean(String(process.env.NEXVAULT_API || '').trim());
     const [website, nv] = await Promise.all([
       websiteCheck,
       apiConfigured ? nexvault.websiteStatus() : Promise.resolve(null),
@@ -70,7 +70,7 @@ const status = {
           : `🔴 Offline / blocked\nLatency: ${nv?.latency ?? 'n/a'} ms\n${String(nv?.error || 'Unknown API error').slice(0, 700)}`,
       });
     } else {
-      embed.addFields({ name: 'NexVault API', value: '⚪ Not configured — set `NEXVAULT_API_URL` and `NEXVAULT_API_KEY` in `.env`.' });
+      embed.addFields({ name: 'NexVault API', value: '⚪ Not configured — add the complete API URL to `NEXVAULT_API` in `.env`.' });
     }
     await interaction.editReply({ embeds: [embed] });
   },

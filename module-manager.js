@@ -5,7 +5,7 @@ const ALWAYS_ENABLED = new Set(['manage', 'settings']);
 const MODULE_LABELS = {
   general: 'General', moderation: 'Moderation', admin: 'Administration', welcome: 'Welcome',
   apply: 'Applications', tickets: 'Tickets', reports: 'Reports', rules: 'Rules',
-  partner: 'Partners', giveaway: 'Giveaways', utility: 'Utilities', bot: 'Bot tools', owner: 'Owner tools',
+  partner: 'Partners', giveaway: 'Giveaways', utility: 'Utilities', bot: 'Bot tools', ai: 'AI', owner: 'Owner tools',
 };
 
 function moduleEnabled(guildId, moduleName) {

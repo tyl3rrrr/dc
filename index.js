@@ -28,12 +28,14 @@ const github = require('./github');
 const dashboardBridge = require('./dashboard-bridge');
 const giveawayRuntime = require('./giveaway-runtime');
 const feedbackRuntime = require('./feedback-runtime');
+const bloxdFeedbackRuntime = require('./bloxd-feedback-runtime');
 const reportRuntime = require('./report-runtime');
 const partnerRuntime = require('./partner-runtime');
 const rulesRuntime = require('./rules-runtime');
 const menus = require('./menus');
 const stats = require('./stats');
 const botlog = require('./botlog');
+const aiRuntime = require('./ai-runtime');
 const applyRuntime = require('./apply-runtime');
 const ticketRuntime = require('./ticket-runtime');
 const settingsPanel = require('./commands-settings');
@@ -277,7 +279,7 @@ function wire(client, plan) {
     }
     if (!plan.content) {
       console.error(
-        '🚨 THE !support TEXT COMMAND IS INACTIVE: the "MESSAGE CONTENT INTENT" is not enabled.\n' +
+        '🚨 TICKET AI AND THE !support TEXT COMMAND ARE INACTIVE: the "MESSAGE CONTENT INTENT" is not enabled.\n' +
           '   Enable it at https://discord.com/developers/applications -> your app -> Bot -> Privileged Gateway Intents, then restart.'
       );
     }
@@ -290,6 +292,7 @@ function wire(client, plan) {
     github.start(readyClient); // posts new GitHub releases to the channels set with /config github
     dashboardBridge.start(readyClient); // outbound-only bridge to the Supabase-backed dashboard
     giveawayRuntime.start(readyClient); // automatic draw when a giveaway's time is up
+    bloxdFeedbackRuntime.start(readyClient); // forwards new Supabase feedback to the owner-configured channel
     botlog.start(); // periodic cleanup of old bot-log entries
 
     // Auto-sync: makes sure Discord has exactly the commands this code knows
@@ -451,9 +454,14 @@ function wire(client, plan) {
         attachments: [...message.attachments.values()].map((a) => ({ name: a.name, url: a.url })),
       });
       try {
-        // Only active tickets and application interviews are handled in DMs.
+        // Ticket or an application interview? Only a user with one of those OPEN is handled that
+        // way; every other DM falls through to the AI (see ai-runtime.js) - the bot replies
+        // individually, like a normal chat.
         const isTicket = await ticketRuntime.handleDM(message);
-        if (!isTicket) await applyRuntime.handleDMAnswer(message);
+        if (!isTicket) {
+          const isApplication = await applyRuntime.handleDMAnswer(message);
+          if (!isApplication) await aiRuntime.handleDM(message);
+        }
       } catch (error) {
         console.error('Error while processing a DM:', error);
       }
@@ -464,7 +472,8 @@ function wire(client, plan) {
       const isTicket = await ticketRuntime.handleGuildMessage(message);
       if (isTicket) return;
       if (plan.content) await legacySupport.handleMessage(message);
-
+      const handledMention = await aiRuntime.handleMention(message, { hasContent: plan.content });
+      if (!handledMention) return;
     } catch (error) {
       console.error('Error while processing a message:', error);
     }

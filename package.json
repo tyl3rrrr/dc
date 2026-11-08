@@ -1,7 +1,7 @@
 {
   "name": "tylxrrrr-discord-bot",
-  "version": "9.0.0",
-  "description": "GalaxyBot v9.0: Discord.js bot with moderation, utilities, staff-only tickets, owner tools and NexVault Supabase integration; AI features removed.",
+  "version": "9.1.0",
+  "description": "GalaxyBot v9.1: per-server modules, private AI support tickets, owner tools and BloxdAtlas feedback forwarding.",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {

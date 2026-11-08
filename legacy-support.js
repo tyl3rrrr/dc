@@ -91,7 +91,7 @@ async function handleMessage(message) {
 
   const sub = (args[0] || '').toLowerCase();
   if (sub === 'config') {
-    await message.reply('⚙️ Use `/ticket-config` to set the ticket category and staff role.');
+    await message.reply('⚙️ Use `/ticket-config` to set the ticket category, staff role, AI and server support knowledge.');
     return;
   }
 
