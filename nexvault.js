@@ -1,52 +1,96 @@
+// NexVault bot integration. This Edge Function URL is intentionally hard-coded.
+// .env contains only the dedicated 64-character bot API key as NEXVAULT_API.
 'use strict';
 const { ActivityType, PresenceUpdateStatus } = require('discord.js');
+
 const DEFAULT_WEBSITE = 'https://nexvault.is-great.org/';
+const NEXVAULT_API_URL = 'https://aaymcbxsgioljwgahkwh.supabase.co/functions/v1/nexvault-api';
 const ROTATION_MS = 120000;
+const REQUEST_TIMEOUT_MS = 12000;
 let categoriesCache = [];
+let categoriesPromise = null;
 let lastAvailableCount = null;
 let presenceToggle = false;
 let presenceTimer = null;
 let runningClient = null;
 
-function apiUrl() {
-  const raw = String(process.env.NEXVAULT_API || '').trim();
-  if (!raw) throw new Error('NEXVAULT_API is not configured in .env.');
-  const url = new URL(raw);
-  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('NEXVAULT_API must use HTTP or HTTPS.');
-  if (!url.pathname.toLowerCase().endsWith('.php')) throw new Error('NEXVAULT_API must be the complete API URL from the NexVault Admin Panel.');
+function getApiKey() {
+  const key = String(process.env.NEXVAULT_API || '').trim();
+  if (!/^[a-f0-9]{64}$/i.test(key)) {
+    throw new Error('NEXVAULT_API must contain the 64-character bot key generated in NexVault Admin Panel.');
+  }
+  return key;
+}
+function isConfigured() {
+  return /^[a-f0-9]{64}$/i.test(String(process.env.NEXVAULT_API || '').trim());
+}
+function apiUrl(action) {
+  if (!/^[a-z][a-z0-9_]{1,48}$/i.test(String(action || ''))) throw new Error('Invalid NexVault action.');
+  const url = new URL(NEXVAULT_API_URL);
+  url.searchParams.set('action', action);
   return url;
 }
 function websiteUrl() {
-  const configured = String(process.env.NEXVAULT_WEBSITE_URL || DEFAULT_WEBSITE).trim();
-  try { const parsed = new URL(configured); return ['https:', 'http:'].includes(parsed.protocol) ? parsed.origin + parsed.pathname.replace(/\/?$/, '/') : DEFAULT_WEBSITE; }
-  catch { return DEFAULT_WEBSITE; }
+  return DEFAULT_WEBSITE;
 }
 async function api(action, body) {
-  const url = apiUrl();
-  url.searchParams.set('action', action);
-  const response = await fetch(url, {
-    method: body ? 'POST' : 'GET',
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(12000),
-  });
+  const url = apiUrl(action);
+  const key = getApiKey();
+  const hasBody = body !== undefined && body !== null;
+  const headers = {
+    Accept: 'application/json',
+    'X-NV-API-Key': key,
+    'X-NV-Scope': 'bot',
+  };
+  const options = {
+    method: hasBody ? 'POST' : 'GET',
+    headers,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  };
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(body);
+  }
+
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+      throw new Error(`NexVault API request timed out after ${REQUEST_TIMEOUT_MS / 1000}s.`);
+    }
+    throw new Error(`Could not reach the NexVault Edge Function: ${String(error?.message || error).slice(0, 180)}`);
+  }
+
   const contentType = response.headers.get('content-type') || 'unknown content type';
   const raw = await response.text();
   let data;
   try { data = JSON.parse(raw); }
   catch {
-    const preview = raw.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
-    throw new Error(`Website API returned non-JSON (HTTP ${response.status}; ${contentType}). ${preview || 'Empty response'}`);
+    throw new Error(`NexVault Edge Function returned non-JSON (HTTP ${response.status}; ${contentType}). Check deployment and endpoint configuration.`);
   }
-  if (!response.ok) throw new Error(String(data.error || `Website API error (${response.status}).`).slice(0, 300));
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error(`NexVault Edge Function returned an invalid JSON response (HTTP ${response.status}).`);
+  }
+  if (!response.ok || data.ok === false) {
+    const message = String(data.error || `NexVault API request failed (HTTP ${response.status}).`).slice(0, 280);
+    const error = new Error(message);
+    error.status = response.status;
+    if (Number.isFinite(Number(data.retry_after))) error.retryAfter = Number(data.retry_after);
+    throw error;
+  }
   return data;
 }
 async function fetchCategories(force = false) {
-  if (!force && categoriesCache.length && Date.now() - (fetchCategories.updatedAt || 0) < 60000) return categoriesCache;
-  const result = await api('categories');
-  categoriesCache = Array.isArray(result.categories) ? result.categories : [];
-  fetchCategories.updatedAt = Date.now();
-  return categoriesCache;
+  const fresh = categoriesCache.length > 0 && Date.now() - (fetchCategories.updatedAt || 0) < 60000;
+  if (!force && fresh) return categoriesCache;
+  if (categoriesPromise) return categoriesPromise;
+  categoriesPromise = api('categories').then(result => {
+    categoriesCache = Array.isArray(result.categories) ? result.categories : [];
+    fetchCategories.updatedAt = Date.now();
+    return categoriesCache;
+  }).finally(() => { categoriesPromise = null; });
+  return categoriesPromise;
 }
 async function generate(discordId, categoryId) {
   return api('generate', { discord_id: String(discordId), category_id: Number(categoryId) });
@@ -54,12 +98,15 @@ async function generate(discordId, categoryId) {
 async function websiteStatus() {
   const started = Date.now();
   try {
-    const [health, categoryData, countData] = await Promise.all([api('health'), api('categories'), api('available_count')]);
+    const [health, categoryData, countData] = await Promise.all([
+      api('health'), api('categories'), api('available_count'),
+    ]);
     const categories = Array.isArray(categoryData.categories) ? categoryData.categories.length : 0;
     const available = Number(countData.available);
-    return { ok: Number.isFinite(available), latency: Date.now() - started, service: health.service || 'NexVault API', categories, available: Number.isFinite(available) ? available : 'unknown' };
+    if (!Number.isFinite(available)) throw new Error('NexVault returned an invalid available-code count.');
+    return { ok: true, latency: Date.now() - started, service: health.service || 'NexVault API', categories, available };
   } catch (error) {
-    return { ok: false, latency: Date.now() - started, error: String(error.message || error).slice(0, 500) };
+    return { ok: false, latency: Date.now() - started, error: String(error?.message || error).slice(0, 420) };
   }
 }
 async function updatePresence() {
@@ -70,24 +117,31 @@ async function updatePresence() {
       const count = Number(result.available);
       if (!Number.isFinite(count)) throw new Error('API response did not contain a numeric available count.');
       lastAvailableCount = count;
-    } catch (error) { console.warn(`[NexVault presence] ${String(error.message || error).slice(0, 240)}`); }
+    } catch (error) {
+      console.warn(`[NexVault presence] ${String(error?.message || error).slice(0, 220)}`);
+    }
     const label = lastAvailableCount === null ? 'codes status unavailable' : `${lastAvailableCount} available codes`;
-    runningClient.user.setPresence({ status: PresenceUpdateStatus.DoNotDisturb, activities: [{ name: label, type: ActivityType.Watching }] });
+    await runningClient.user.setPresence({ status: PresenceUpdateStatus.DoNotDisturb, activities: [{ name: label, type: ActivityType.Watching }] });
   } else {
-    runningClient.user.setPresence({ status: PresenceUpdateStatus.DoNotDisturb, activities: [{ name: 'made by .sl4m3d', type: ActivityType.Watching }] });
+    await runningClient.user.setPresence({ status: PresenceUpdateStatus.DoNotDisturb, activities: [{ name: 'made by .sl4m3d', type: ActivityType.Watching }] });
   }
   presenceToggle = !presenceToggle;
 }
 function start(client) {
   if (String(process.env.NEXVAULT_PRESENCE_ROTATION || '').toLowerCase() !== 'true') return;
+  if (!isConfigured()) {
+    console.warn('[NexVault presence] Rotation requested, but NEXVAULT_API is not a valid 64-character bot key.');
+    return;
+  }
   stop();
   runningClient = client;
-  updatePresence().catch(() => {});
-  presenceTimer = setInterval(() => updatePresence().catch(() => {}), ROTATION_MS);
+  updatePresence().catch(error => console.warn('[NexVault presence]', error.message));
+  presenceTimer = setInterval(() => updatePresence().catch(error => console.warn('[NexVault presence]', error.message)), ROTATION_MS);
+  presenceTimer.unref?.();
 }
 function stop() {
   if (presenceTimer) clearInterval(presenceTimer);
   presenceTimer = null;
   runningClient = null;
 }
-module.exports = { DEFAULT_WEBSITE, apiUrl, websiteUrl, api, fetchCategories, generate, websiteStatus, start, stop };
+module.exports = { DEFAULT_WEBSITE, NEXVAULT_API_URL, apiUrl, isConfigured, websiteUrl, api, fetchCategories, generate, websiteStatus, start, stop };

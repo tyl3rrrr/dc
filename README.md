@@ -1,6 +1,11 @@
-# GalaxyBot v9.1.0
+# GalaxyBot v9.1.2
 
 GalaxyBot v9 is a Discord.js v14 bot with per-server module management, moderation, utilities, AI support, private ticket channels, owner tools and an integrated NexVault code-distribution API client.
+
+## What's new in v9.1.2
+
+- **NexVault Edge Function fix:** the Supabase function URL is hard-coded in `nexvault.js`. Set `NEXVAULT_API` to only the dedicated 64-character bot-scope key from NexVault Admin Panel. The bot sends `X-NV-API-Key` and `X-NV-Scope: bot`; it no longer expects a complete URL or query-string key.
+- **Separate Supabase clients:** NexVault uses its own scoped API-key header. The owner-dashboard bridge keeps its separate `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` settings; neither client is reused as the other's credential.
 
 ## What's new in v9.1.0
 
@@ -14,7 +19,7 @@ GalaxyBot v9 is a Discord.js v14 bot with per-server module management, moderati
 - **Gemini ticket assistant:** when `GEMINI_KEY` is configured and ticket AI is enabled, the assistant replies in the customer's language (English by default). It uses the server knowledge saved with `/ticket-config knowledge`. When the issue needs staff or cannot be solved confidently, it notifies the configured support/admin/mod roles. Staff can always take over manually.
 - **Public links:** `/links` displays the current links. The bot owner can run `/links-manage` in a direct message to add, edit or delete entries. Set `DISCORD_INVITE_URL` to add the example “Join the Discord” link.
 - **Owner inspection:** `/owner-inspect` is a normal, persistent DM menu with pagination for browsing project source files.
-- **NexVault integration:** `/generate` retrieves active categories from the PHP API using autocomplete, verifies category guild/role requirements, assigns a code and sends it by DM. The existing `/status` also reports the NexVault API state if configured. The optional `NEXVAULT_PRESENCE_ROTATION=true` setting activates the original NexVault 120-second Watching activity cycle.
+- **NexVault integration:** `/generate` retrieves active categories from the PHP API using autocomplete, verifies category guild/role requirements, assigns a code and sends it by DM. The existing `/status` also reports the NexVault API state if configured. The optional NexVault presence rotation remains disabled by default and does not require another `.env` entry.
 
 
 ## BloxdAtlas feedback bridge (v9.1)
@@ -30,16 +35,16 @@ GalaxyBot v9 is a Discord.js v14 bot with per-server module management, moderati
 - Node.js 20 or newer recommended (Node.js 18+ is supported by the bot's existing engine setting).
 - A Discord application and bot token.
 - `GEMINI_KEY` for Gemini ticket replies and the other AI features.
-- The NexVault PHP website hosted separately, plus the complete API URL generated in its Admin Panel.
+- The NexVault website and Supabase Edge Function hosted separately, plus a dedicated bot-scope API key generated in its Admin Panel.
 - A host that can keep a Node.js process running. InfinityFree hosts the PHP website; it is not a persistent Node.js bot host.
 
 ## Installation
 
-1. Extract the complete ZIP to your Node.js host. Run the bot commands from the archive's **root folder** (the folder containing `package.json`). The separate `website/` folder is only the PHP upload bundle for InfinityFree.
+1. Extract the complete ZIP to your Node.js host. Run the bot commands from the archive's **root folder** (the folder containing `package.json`). The NexVault PHP website is delivered separately in `NexVault-sl4m3d-production.zip`.
 2. Copy `.env.example` to `.env`.
 3. Fill in `DISCORD_TOKEN` and `CLIENT_ID`.
 4. Add the Gemini API key to `GEMINI_KEY` if AI ticket replies are required.
-5. In the NexVault website Admin Panel, generate the Discord bot API URL and paste the complete URL into `NEXVAULT_API`. Keep the `?key=...` part intact. Do not put that key in a public repository or share it in Discord.
+5. In NexVault Admin Panel, create or rotate the **bot-scoped API key**. Copy only the 64-character key into `.env` as `NEXVAULT_API=<key>`. The Edge Function URL is already hard-coded in `nexvault.js`; do not paste a URL or `?key=` query into the variable. Keep the key private.
 6. Run:
 
    ```bash
@@ -84,37 +89,26 @@ Use `/ticket-config view` to inspect the current ticket configuration. `/ticket-
 
 ## NexVault website deployment
 
-The `website/` directory in this archive is the complete PHP website bundle from the supplied NexVault website ZIP. Upload the **contents** of this directory to the InfinityFree domain's web root (`https://nexvault.is-great.org/`). Keep the supplied `config.php` unchanged; it is byte-for-byte identical to the file from your ZIP. Do **not** drop/recreate the existing MySQL database or re-import `schema.sql` on an installation that already contains users. Existing accounts and redemptions live in the external MySQL database and are not included in this code archive. Preserve `storage/` and any live uploads on the host.
+The NexVault PHP site is delivered as a separate `NexVault-sl4m3d-production.zip` package. It uses the sl4m3d visual system and the same favicon set as the sl4m3d website. Upload the ZIP contents to the NexVault web root. Keep the live server-only `config.local.php` in place; the package intentionally contains only `config.local.php.example`, never the live API key.
 
-After deployment, log in to NexVault as the existing administrator, open Admin Panel and generate/rotate the Discord bot API URL. Copy that complete URL into `.env` as `NEXVAULT_API`. The API key is shown only once by the website; if it is lost, rotate it in the Admin Panel and update `.env`.
+The site and the bot call the same hard-coded Supabase Edge Function endpoint:
 
-**InfinityFree limitation:** its free-hosting security layer can block automated server-to-server API requests and return an HTML challenge/403 instead of JSON. If `/status` reports non-JSON, 403 or a blocked API, this is a hosting-layer limitation; the Node bot cannot safely bypass it. The PHP website may still work in a browser while `/generate` cannot reach its API. The API must be moved to a host that permits direct server-to-server requests for guaranteed `/generate` availability.
+`https://aaymcbxsgioljwgahkwh.supabase.co/functions/v1/nexvault-api`
 
-## Environment variables
+The website authenticates with its own website-scope key held privately in `config.local.php`. The bot authenticates with a different bot-scope key stored only in the bot host's `.env` as `NEXVAULT_API=<64-character-key>`. The bot sends `X-NV-API-Key` and `X-NV-Scope: bot`; the PHP site sends the website-scope headers. Do not reuse keys between scopes.
 
-| Variable | Purpose |
-|---|---|
-| `DISCORD_TOKEN` | Required Discord bot token |
-| `CLIENT_ID` | Discord application ID (recommended for reference) |
-| `OWNER_ID` | Optional additional bot owner user ID |
-| `GEMINI_KEY` | Gemini API key for AI features and ticket assistant |
-| `GEMINI_MODEL` | Optional Gemini model override; default `gemini-3.8-flash` |
-| `NEXVAULT_API` | Complete API URL generated in the NexVault Admin Panel, including `?key=` |
-| `NEXVAULT_WEBSITE_URL` | Public website URL; default `https://nexvault.is-great.org/` |
-| `DISCORD_INVITE_URL` | Optional invite link displayed by `/links` as “Join the Discord” |
-| `NEXVAULT_PRESENCE_ROTATION` | Optional `true` to enable NexVault's rotating Watching activity; default `false` |
-| `AUTO_DEPLOY` | Set `false` to disable automatic Discord command synchronization |
-| `GUILD_ID` | Optional target for explicit guild registration in `npm run deploy` |
+After deployment, sign in with the existing NexVault administrator and use Admin Panel → Discord bot API key to create/rotate the bot key. A new key revokes the previous active bot key, so update the bot host's `.env` immediately after rotating. Never put the key in a public repository, browser JavaScript or Discord messages.
 
-A starter `.env.example` is included. Never upload `.env`, `data.json`, database credentials or the full `NEXVAULT_API` URL to GitHub.
+**InfinityFree limitation:** its free-hosting security layer can block automated server-to-server API requests and return an HTML challenge/403 instead of JSON. If the bot reports non-JSON or 403, check the hosting/network path and the Edge Function logs; do not try to bypass the host's security layer. A different API host may be needed for guaranteed server-to-server access.
 
 ## Data and backups
 
 - `data.json` stores GalaxyBot runtime settings, including per-guild module toggles, tickets, warnings, giveaways and other server data. It is created automatically on first start and is intentionally **not included in this release ZIP**. For an existing installation, keep your current `data.json` in the bot root while replacing the code; do not overwrite or delete it. Back it up before upgrading.
-- NexVault users, inventory and redemptions are stored in the website's MySQL database. The supplied PHP `config.php` is included byte-for-byte unchanged in `website/`; this project does not migrate, drop, recreate or reset the external SQL database. Do not run `schema.sql` on a database that already contains users.
-- Preserve the complete live `website/storage/` folder and any uploaded item files on the hosting account when deploying an update. The uploaded source archive contains the `storage/items/` directory, but live uploaded files on InfinityFree are not part of this ZIP.
-- Back up `data.json` and the NexVault MySQL database separately before upgrades.
+- NexVault users, categories, codes, redemptions and private file metadata are stored in the existing Supabase project. This bot release does not modify or reset that data.
+- Uploaded NexVault files remain in the existing private Supabase Storage bucket. Do not delete that bucket or its objects during a website-code update.
+- Back up `data.json` and the existing Supabase data before upgrades.
 
 ## Validation and operational notes
 
 All JavaScript files pass Node's syntax parser, and all PHP files pass `php -l`. The bot also validates command payload names, descriptions and option structure before publishing them. A successful local check does not authenticate to Discord, Gemini or InfinityFree. Live command registration, role/channel permission checks and the NexVault API must be verified with the actual Discord application, keys and hosting account.
+

@@ -39,10 +39,14 @@ const links = {
   website: process.env.WEBSITE_URL || 'https://galaxybot.is-great.org/',
   tos: process.env.TOS_URL || 'https://tylxrrrr.is-great.net/tos-bot.html',
   privacy: process.env.PRIVACY_URL || 'https://tylxrrrr.is-great.net/privacy-bot.html',
-  nexvault: process.env.NEXVAULT_WEBSITE_URL || 'https://nexvault.is-great.org/',
+  nexvault: 'https://nexvault.is-great.org/',
 };
 
 const changelog = [
+  {
+    date: '2026-11-10',
+    text: 'v9.1.2: migrated NexVault to the connected Supabase project; the function URL remains hard-coded and NEXVAULT_API contains only the bot-scope key.',
+  },
   {
     date: '2026-11-08',
     text: 'v9.1.0: added owner-only /feedback-bloxdatlas to select a Discord channel for new BloxdAtlas guest and Discord-account feedback embeds, with persistent channel configuration and Supabase polling.',
@@ -167,7 +171,7 @@ function reloadLinks() {
   links.website = process.env.WEBSITE_URL || links.website;
   links.tos = process.env.TOS_URL || links.tos;
   links.privacy = process.env.PRIVACY_URL || links.privacy;
-  links.nexvault = process.env.NEXVAULT_WEBSITE_URL || links.nexvault;
+  // NexVault's public website link is fixed; the Edge Function URL is fixed in nexvault.js.
 }
 
 function reloadAll() {

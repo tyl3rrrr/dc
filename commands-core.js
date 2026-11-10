@@ -48,7 +48,7 @@ const status = {
         return { ok: false, code: null, latency: Date.now() - started, error: error.name === 'AbortError' ? 'Timed out after 6 seconds' : String(error.message || error).slice(0, 250) };
       }
     })();
-    const apiConfigured = Boolean(String(process.env.NEXVAULT_API || '').trim());
+    const apiConfigured = nexvault.isConfigured();
     const [website, nv] = await Promise.all([
       websiteCheck,
       apiConfigured ? nexvault.websiteStatus() : Promise.resolve(null),
@@ -70,7 +70,7 @@ const status = {
           : `🔴 Offline / blocked\nLatency: ${nv?.latency ?? 'n/a'} ms\n${String(nv?.error || 'Unknown API error').slice(0, 700)}`,
       });
     } else {
-      embed.addFields({ name: 'NexVault API', value: '⚪ Not configured — add the complete API URL to `NEXVAULT_API` in `.env`.' });
+      embed.addFields({ name: 'NexVault API', value: '⚪ Not configured — add the generated 64-character bot key as `NEXVAULT_API` in `.env`. The Edge Function URL is hard-coded.' });
     }
     await interaction.editReply({ embeds: [embed] });
   },
